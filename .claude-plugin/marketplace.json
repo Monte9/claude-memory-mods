@@ -10,6 +10,11 @@
       "name": "session-memory",
       "source": "./session-memory",
       "description": "/session-memory: a side pane listing this project's auto-memory files by type, with the index check"
+    },
+    {
+      "name": "session-wrap",
+      "source": "./session-wrap",
+      "description": "/session-wrap: save what this session learned to auto memory under a strict bar, verify the index, report the session's cost, then hand back /rename and /clear"
     }
   ]
 }
