@@ -1,0 +1,12 @@
+{
+  "name": "session-memory",
+  "version": "0.1.0",
+  "description": "/session-memory: a side pane listing this project's auto-memory files by type, with the index check",
+  "author": {
+    "name": "Monte Thakkar",
+    "url": "https://github.com/Monte9"
+  },
+  "types": "./types/index.d.ts",
+  "repository": "https://github.com/Monte9/claude-mods",
+  "license": "MIT"
+}

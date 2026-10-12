@@ -26,6 +26,7 @@ A mod runs with your permissions, like any plugin. Read its code first, or list 
 
 | Mod | What it does | Commands |
 |---|---|---|
+| [`session-memory`](session-memory) | Opens a **Memory** pane with the current project's [auto memory](https://code.claude.com/docs/en/memory#auto-memory): every memory file grouped by type (user, feedback, project, reference) with its description. Click one to read it. Flags files `MEMORY.md` doesn't link, and links that point nowhere. Worktrees resolve to the main checkout's memory, as Claude Code stores it | `/session-memory`, then **Refresh** in the pane |
 
 ## Develop
 

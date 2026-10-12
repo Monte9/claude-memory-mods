@@ -1,6 +1,15 @@
 {
   "name": "monte9",
-  "owner": { "name": "Monte Thakkar", "url": "https://github.com/Monte9" },
+  "owner": {
+    "name": "Monte Thakkar",
+    "url": "https://github.com/Monte9"
+  },
   "description": "Claude Code mods by Monte Thakkar",
-  "plugins": []
+  "plugins": [
+    {
+      "name": "session-memory",
+      "source": "./session-memory",
+      "description": "/session-memory: a side pane listing this project's auto-memory files by type, with the index check"
+    }
+  ]
 }
