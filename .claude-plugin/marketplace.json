@@ -15,6 +15,11 @@
       "name": "session-wrap",
       "source": "./session-wrap",
       "description": "/session-wrap: save what this session learned to auto memory under a strict bar, verify the index, report the session's cost, then hand back /rename and /clear"
+    },
+    {
+      "name": "session-usage",
+      "source": "./session-usage",
+      "description": "/session-usage: a side pane showing what each reply costs right now, your rate limits, this week against last, and which sessions carry the bill"
     }
   ]
 }
