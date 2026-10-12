@@ -1,0 +1,4 @@
+# Files Claude Code writes into a mod it loads
+*/.claude-plugin/types/
+*/tsconfig.json
+.DS_Store
