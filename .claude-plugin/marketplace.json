@@ -14,7 +14,7 @@
     {
       "name": "save-memory",
       "source": "./save-memory",
-      "description": "/save-memory: save what this session learned to auto memory under a strict bar, verify the index, report the session's cost, then hand back /rename and /clear"
+      "description": "/save-memory: save what this session learned to auto memory under a strict bar, verify the index, then hand back /rename and /clear"
     }
   ]
 }

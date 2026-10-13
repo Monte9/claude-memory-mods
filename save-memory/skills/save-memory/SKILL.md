@@ -1,7 +1,6 @@
 ---
 name: save-memory
-description: Save what this session learned to auto memory, then hand back the commands to rename and clear. Captures durable facts, folds them into existing memories rather than adding neighbours, verifies the index, and reports what the session cost. Use when finishing a topic, before switching to unrelated work, or when a session has run long.
-allowed-tools: Bash(node ${CLAUDE_SKILL_DIR}/usage-report.mjs*)
+description: Save what this session learned to auto memory, then hand back the commands to rename and clear. Captures durable facts, folds them into existing memories rather than adding neighbours, and verifies the index. Use when finishing a topic, before switching to unrelated work, or when a session has run long.
 ---
 
 # Save memory
@@ -12,7 +11,7 @@ Close out this session so `/clear` is safe. The conversation is disposable; anyt
 
 ## Why this exists
 
-Usage tracks session length, not how much was asked for. Every turn re-reads the whole conversation from cache, so a long session pays for its history again on each reply. Measured on one heavy user's machine over two months: cache reads ran about 400:1 against output tokens, and the two longest sessions were most of all usage. Step 6 re-measures it on yours. Clearing between unrelated topics is the biggest lever, and the only reason not to clear is fear of losing context. This skill removes that reason.
+Usage tracks session length, not how much was asked for. Every turn re-reads the whole conversation from cache, so a long session pays for its history again on each reply. Measured on one heavy user's machine over two months: cache reads ran about 400:1 against output tokens, and the two longest sessions were most of all usage. Clearing between unrelated topics is the biggest lever, and the only reason not to clear is fear of losing context. This skill removes that reason.
 
 ## Workflow
 
@@ -50,7 +49,7 @@ Read the project's `MEMORY.md` and `~/.claude/CLAUDE.md`, then open any memory f
 
 ### 3. Write it
 
-**Pick the layer first.** A correction that holds in every repo becomes one line in `~/.claude/CLAUDE.md` and nowhere else: that file reaches every session and subagent, which memory does not. Keep it short (about 30 lines), and name any change to it in the step 7 report. Project-specific facts, incident detail and the why stay in memory.
+**Pick the layer first.** A correction that holds in every repo becomes one line in `~/.claude/CLAUDE.md` and nowhere else: that file reaches every session and subagent, which memory does not. Keep it short (about 30 lines), and name any change to it in the step 6 report. Project-specific facts, incident detail and the why stay in memory.
 
 Follow Claude Code's memory format: one fact per file, named `<type>_<topic>.md` with `name` matching the filename, `type` (`user`, `feedback`, `project`, `reference`) in the frontmatter. Feedback and project memories carry `**Why:**` and `**How to apply:**` lines.
 
@@ -84,28 +83,9 @@ grep -rnE '\bdue\b[^.;]{0,40}\b([0-9]{4}-)?[0-9]{2}-[0-9]{2}\b' . --include='fee
 
 Counts must match and nothing may print. (The `view-memory` mod shows the same check in a pane, plus every passed due date.)
 
-### 6. Refresh the usage stats
+### 6. Report and hand off
 
-Run this in the foreground and wait for it; it reads every local transcript, rewrites `~/.claude/stats.json`, and takes a few seconds:
-
-```bash
-node ${CLAUDE_SKILL_DIR}/usage-report.mjs
-```
-
-Then give the user one table in the handoff, numbers from this run and not from memory. Four rows, no prose above it, one sentence below it at most:
-
-| | Scope | Output | Cache-read | Ratio | Note |
-|---|---|---|---|---|---|
-| All sessions | date range, session count | | | | whether it moved since last time |
-| This session | this project's directory (its name is in the working directory path) | | | | above or below the average |
-| Busiest day | the date | | | | whether it is today |
-| Heaviest sessions | the top one or two projects | | | | their share of all cache-read |
-
-Ratio is cache-read tokens divided by output tokens, to the nearest integer, written `393:1`. Use the script's own units (`1.2M`, `300.7M`, `21.99B`). The one sentence below the table is the story, if there is one: usually which sessions carry the bill. This machine only, the same limitation as `/usage`. If the script fails, say so and hand off without the table rather than reconstructing figures.
-
-### 7. Report and hand off
-
-The user is about to erase this conversation on the strength of this report. They should be able to read it and know nothing important is being thrown away. Give them five things, in this order: the four below, then the usage table from step 6.
+The user is about to erase this conversation on the strength of this report. They should be able to read it and know nothing important is being thrown away. Give them four things, in this order:
 
 **What memory now holds from this session.** Not filenames: the actual claims, in a sentence each, so they can judge whether they are right. Say whether each was a new file or a change to an existing one.
 

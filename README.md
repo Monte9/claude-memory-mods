@@ -29,7 +29,6 @@ Both work in the terminal and in the Code tab of the Claude desktop app.
 
 - It saves only what clears one bar: would a future session make a *worse decision* without this? Most sessions save nothing.
 - It folds new facts into existing memories rather than adding neighbours, and checks `MEMORY.md` against the files.
-- It reports what the session cost: its cache-read to output ratio against your average, from a bundled script that reads your local transcripts.
 - It hands back `/rename` and `/clear` to paste.
 
 Put your own rules (team docs, a ship log, who else reads your memory) in `~/.claude/save-memory.md`. It reads them first.
