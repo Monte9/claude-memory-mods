@@ -1,7 +1,7 @@
 {
   "name": "session-memory",
-  "version": "0.1.0",
-  "description": "/session-memory: a side pane listing this project's auto-memory files by type, with the index check",
+  "version": "0.2.0",
+  "description": "/session-memory: a pane browsing every auto-memory folder, with search, overdue items, health checks and what each session loads",
   "author": {
     "name": "Monte Thakkar",
     "url": "https://github.com/Monte9"
