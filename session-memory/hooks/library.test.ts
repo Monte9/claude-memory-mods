@@ -20,6 +20,7 @@ const memory = (name: string, extra: Partial<Memory> = {}): Memory => ({
   description: '',
   body: '',
   modified: '2026-10-01',
+  updatedMs: 0,
   ...extra,
 })
 

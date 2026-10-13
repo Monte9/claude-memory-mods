@@ -47,15 +47,16 @@ test('titles a memory by its MEMORY.md link, else by its file name', () => {
   expect(report.memories.map(m => m.title)).toEqual(['PR style', 'Ci checks'])
 })
 
-test('groups by type in order, sorts by title, and adds Other only when a file needs it', () => {
+test('groups by type in order, newest first even within a day, and adds Other only when a file needs it', () => {
   const files = [
-    { name: 'user_b.md', text: memory('user', '  modified: 2026-10-09T00:00:00Z\n') },
-    { name: 'user_a.md', text: memory('user', '  modified: 2026-10-01T00:00:00Z\n') },
+    { name: 'user_old.md', text: memory('user', '  modified: 2026-10-01T09:00:00Z\n') },
+    { name: 'user_morning.md', text: memory('user', '  modified: 2026-10-09T08:00:00Z\n') },
+    { name: 'user_evening.md', text: memory('user', '  modified: 2026-10-09T21:00:00Z\n') },
   ]
   const sections = sectionsOf(buildReport(files, '', 'demo', '/m'))
   expect(sections.map(s => s.type)).toEqual(['user', 'feedback', 'project', 'reference'])
-  expect(sections[0]?.memories.map(m => m.name)).toEqual(['user_a', 'user_b'])
-  expect(sections[0]?.latest?.name).toBe('user_b')
+  expect(sections[0]?.memories.map(m => m.name)).toEqual(['user_evening', 'user_morning', 'user_old'])
+  expect(sections[0]?.latest?.name).toBe('user_evening')
   expect(sections[1]?.latest).toBeUndefined()
   const withOther = sectionsOf(buildReport([{ name: 'notes.md', text: 'plain' }], '', 'demo', '/m'))
   expect(withOther.map(s => s.type)).toEqual(['user', 'feedback', 'project', 'reference', 'other'])

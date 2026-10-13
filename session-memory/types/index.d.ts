@@ -8,6 +8,8 @@ export type Memory = {
   /** Empty for a symlink into another scanned folder: read it from `linkTo`. */
   body: string
   modified: string
+  /** When it last changed, in milliseconds, for ordering within a day; 0 when unknown. */
+  updatedMs: number
   /** The id of the scanned folder this file is a symlink into, if any. */
   linkTo?: string
 }
@@ -46,17 +48,21 @@ export type Library = {
   estimatedLoad: LoadedFile[]
 }
 
-/** Where the pane is. `fromTop` sends Close back to search or Overdue rather than a type's list. */
+/** Where the pane is. `fromTop` sends Close back to search or Overdue rather than a type's list; `file` is a loaded file open for reading. */
 export type View = {
   folder: string | null
   section: string | null
   memory: string | null
+  file: string | null
   query: string
   fromTop: boolean
 }
 
+/** A loaded file's text, read when it is opened. */
+export type OpenedFile = { path: string; kind: string; text: string }
+
 declare module 'claude-code' {
   interface PluginState {
-    'session-memory': { library: Library | null; view: View; measured: LoadedFile[] | null }
+    'session-memory': { library: Library | null; view: View; measured: LoadedFile[] | null; opened: OpenedFile | null }
   }
 }

@@ -19,10 +19,11 @@ import { buildReport, formatDay, sectionsOf } from './summary'
 import type { MemoryFile } from './summary'
 
 const PANE = 'session-memory'
-const TOP: View = { folder: null, section: null, memory: null, query: '', fromTop: false }
+const TOP: View = { folder: null, section: null, memory: null, file: null, query: '', fromTop: false }
 const library = atom({ plugin: 'session-memory', key: 'library' } as const, null)
 const view = atom({ plugin: 'session-memory', key: 'view' } as const, TOP)
 const measured = atom({ plugin: 'session-memory', key: 'measured' } as const, null)
+const opened = atom({ plugin: 'session-memory', key: 'opened' } as const, null)
 
 const clip = (text: string, max: number): string =>
   text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text
@@ -176,6 +177,36 @@ export const register: Register = on => {
     }
     const today = new Date().toISOString().slice(0, 10)
     const nameOf = (id: string | undefined) => lib.folders.find(folder => folder.id === id)?.project ?? id ?? ''
+    const load = (await read($, measured)) ?? lib.estimatedLoad
+
+    if (at.file !== null) {
+      const doc = await read($, opened)
+      const text = doc?.path === at.file ? doc.text : ''
+      const back = () => go({ ...TOP, query: at.query }, `load-${load.findIndex(file => file.path === at.file)}`)
+      return (
+        <Box flexDirection="column" rowGap={1}>
+          <Box justifyContent="space-between" alignItems="center">
+            <Box columnGap={1}>
+              <Button key="crumb-top" plain dimColor onPress={back}>
+                Memory
+              </Button>
+              <Text dimColor>› Loaded into every session</Text>
+            </Box>
+            <Button key="close" label="Close" onPress={back} />
+          </Box>
+          <Box flexDirection="column" rowGap={1} borderStyle="round" borderColor="claude" paddingX={2} paddingY={1}>
+            <Box flexDirection="column">
+              <Text bold>{tildePath(at.file, lib.home)}</Text>
+              <Text dimColor>
+                {doc?.kind ?? 'file'} · {formatChars(text.length)} · {formatTokens(text.length)}
+              </Text>
+            </Box>
+            <Markdown text={text === '' ? '_Empty, or it could not be read._' : text} />
+          </Box>
+        </Box>
+      )
+    }
+
     const overdue = findOverdue(lib.folders, today)
     const hits = search(lib.folders, at.query)
     const folder = lib.folders.find(candidate => candidate.id === at.folder)
@@ -193,7 +224,7 @@ export const register: Register = on => {
       const close = () =>
         at.fromTop
           ? go({ ...TOP, query: at.query }, backTop)
-          : go({ folder: folder.id, section: section.type, memory: null, query: at.query, fromTop: false }, `mem-${memory.name}`)
+          : go({ ...TOP, folder: folder.id, section: section.type, query: at.query }, `mem-${memory.name}`)
       return (
         <Box flexDirection="column" rowGap={1}>
           <Box justifyContent="space-between" alignItems="center">
@@ -259,7 +290,7 @@ export const register: Register = on => {
                   key={`mem-${m.name}`}
                   {...link}
                   label={`${m.title} ›`}
-                  onPress={() => go({ folder: folder.id, section: section.type, memory: m.name, query: at.query, fromTop: false }, 'close')}
+                  onPress={() => go({ ...TOP, folder: folder.id, section: section.type, memory: m.name, query: at.query }, 'close')}
                 />
                 <Text dimColor>
                   {formatDay(m.modified, today)}
@@ -337,11 +368,15 @@ export const register: Register = on => {
     }
 
     const total = lib.folders.reduce((sum, each) => sum + each.memories.filter(m => !m.linkTo).length, 0)
-    const load = (await read($, measured)) ?? lib.estimatedLoad
     const isMeasured = load !== lib.estimatedLoad
     const loadChars = load.reduce((sum, file) => sum + file.chars, 0)
     const openFromTop = (folderId: string, name: string, focusKey = 'close') =>
-      go({ folder: folderId, section: null, memory: name, query: at.query, fromTop: true }, focusKey)
+      go({ ...TOP, folder: folderId, memory: name, query: at.query, fromTop: true }, focusKey)
+    const openFile = async (file: LoadedFile) => {
+      const text = await $.fs.read(file.path).catch(() => '')
+      await update($, opened, () => ({ path: file.path, kind: file.kind, text }))
+      await go({ ...TOP, file: file.path, query: at.query }, 'close')
+    }
 
     return (
       <Box flexDirection="column" rowGap={1}>
@@ -355,13 +390,15 @@ export const register: Register = on => {
           <Button key="refresh" label="Refresh" onPress={() => refresh($)} />
         </Box>
         {Input && (
-          <Input
-            key="search"
-            placeholder="Search all memory, then Enter"
-            value={at.query}
-            submitLabel="search"
-            onSubmit={value => go({ ...TOP, query: value.trim() }, 'search')}
-          />
+          <Box width="100%">
+            <Input
+              key="search"
+              placeholder="Search all memory"
+              value={at.query}
+              submitLabel="search"
+              onSubmit={value => go({ ...TOP, query: value.trim() }, 'search')}
+            />
+          </Box>
         )}
 
         {at.query !== '' && (
@@ -445,12 +482,12 @@ export const register: Register = on => {
                 {formatChars(loadChars)} · {formatTokens(loadChars)}
               </Text>
             </Box>
-            {load.map(file => (
-              <Box key={`load-${file.path}`} justifyContent="space-between" columnGap={2}>
+            {load.map((file, index) => (
+              <Box key={`loadrow-${index}`} justifyContent="space-between" columnGap={2}>
+                <Button key={`load-${index}`} {...link} label={`${clip(tildePath(file.path, lib.home), 80)} ›`} onPress={() => openFile(file)} />
                 <Text dimColor>
-                  {tildePath(file.path, lib.home)} <Text dimColor>({file.kind})</Text>
+                  {file.kind} · {formatChars(file.chars)}
                 </Text>
-                <Text dimColor>{formatChars(file.chars)}</Text>
               </Box>
             ))}
             <Text dimColor>

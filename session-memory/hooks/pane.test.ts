@@ -84,6 +84,12 @@ for (const surface of ['terminal', 'desktop'] as const) {
     expect(await ui.find({ text: /1 empty memory folder hidden/ })).toBeDefined()
     expect(await ui.find({ text: /Loaded into every session here/ })).toBeDefined()
 
+    expect((await ui.find({ key: 'load-0' }))?.text).toContain('~/.claude/CLAUDE.md')
+    await ui.press({ key: 'load-0' })
+    expect(await ui.find({ text: /Global rules/ })).toBeDefined()
+    await ui.press({ key: 'close' })
+    expect(await ui.find({ key: 'load-0' })).toBeDefined()
+
     await ui.press({ key: 'folder--home-me--bot-ws' })
     expect(await ui.find({ text: /feedback_tone\.md isn't symlinked here/ })).toBeDefined()
     await ui.press({ key: 'back-top' })

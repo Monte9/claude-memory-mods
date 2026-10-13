@@ -50,9 +50,9 @@ export function parseMemory(file: MemoryFile, title?: string): Memory {
   const frontmatter = hasFrontmatter ? (parts[1] ?? '') : ''
   const body = hasFrontmatter ? parts.slice(2).join('---').trim() : file.text.trim()
   const name = file.name.replace(/\.md$/, '')
-  const modified =
-    field(frontmatter, 'modified').slice(0, 10) ||
-    (file.mtimeMs ? new Date(file.mtimeMs).toISOString().slice(0, 10) : '')
+  const stamp = Date.parse(field(frontmatter, 'modified'))
+  const updatedMs = Number.isNaN(stamp) ? (file.mtimeMs ?? 0) : stamp
+  const modified = updatedMs ? new Date(updatedMs).toISOString().slice(0, 10) : ''
   return {
     name,
     title: title || titleFromName(name),
@@ -60,6 +60,7 @@ export function parseMemory(file: MemoryFile, title?: string): Memory {
     description: field(frontmatter, 'description'),
     body: file.linkTo ? '' : body,
     modified,
+    updatedMs,
     ...(file.linkTo ? { linkTo: file.linkTo } : {}),
   }
 }
@@ -78,15 +79,15 @@ export function buildReport(files: MemoryFile[], index: string, project: string,
   }
 }
 
-/** The four types in order, each with its memories by title and its newest; `other` only when it has any. */
+/** The four types in order, each with its memories newest first; `other` only when it has any. */
 export function sectionsOf(report: Report): Section[] {
   const known = TYPES as readonly string[]
   const types = [...known, ...(report.memories.some(m => !known.includes(m.type)) ? ['other'] : [])]
   return types.map(type => {
     const memories = report.memories
       .filter(m => (type === 'other' ? !known.includes(m.type) : m.type === type))
-      .sort((a, b) => a.title.localeCompare(b.title))
-    const latest = [...memories].sort((a, b) => b.modified.localeCompare(a.modified))[0]
+      .sort((a, b) => b.updatedMs - a.updatedMs || a.title.localeCompare(b.title))
+    const latest = memories[0]
     const { label, blurb } = SECTION_INFO[type] ?? { label: type, blurb: '' }
     return { type, label, blurb, memories, latest }
   })
