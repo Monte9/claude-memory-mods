@@ -58,6 +58,10 @@ Add a one-line index entry to `MEMORY.md`. Write the line to say **when to reach
 
 **A project memory is a milestone list, not a diary.** It holds four things, as bullets: where the work lives (links to the ticket, PR, docs), dated milestones one line each, decisions still open, and what the next session needs that nothing else says. Never a paragraph per session. Once a milestone's detail lands on a ticket, PR or doc, its paragraph becomes a one-line bullet with the link. The check on the way in: if the file has a heading per month, or has passed 25 lines, it is being written as a log of what happened. Rewrite it to the four lists before adding to it.
 
+**A project memory lives while its work is new or in progress.** Once the work ships, fold what still needs watching (checks, due dates, open follow-ups, traps) into the shipped-work file the user's rules name, then delete the project memory and repoint links to it; with no such file, keep only what a future decision needs.
+
+**Due dates live only in project memories,** each on the line that says what is due, written `due YYYY-MM-DD` so a search or the `session-memory` pane's Overdue list finds every one. A feedback, reference or user memory holds no deadline: move the date into the project it belongs to and leave the method behind. When a due item is done, record the result and delete the due line, or it stays overdue forever.
+
 ### 4. Ship log (optional)
 
 Skip this step unless the user's rules (step 0) name a ship log. It is the one deliberate exception to "never record that work happened": a file that lets the user look back in six months and see the big rocks.
@@ -75,9 +79,10 @@ echo "files: $(ls *.md | grep -vc '^MEMORY.md$')   index: $(grep -c '^- ' MEMORY
 grep -oE '\]\([A-Za-z0-9_-]+\.md\)' MEMORY.md | tr -d ']()' | while read f; do [ -f "$f" ] || echo "BROKEN: $f"; done
 for f in *.md; do [ "$f" = "MEMORY.md" ] && continue; grep -q "($f)" MEMORY.md || echo "ORPHAN: $f"; done
 grep -ohE '\[\[[A-Za-z0-9_-]+\]\]' *.md | tr -d '[]' | sort -u | while read n; do [ -f "$n.md" ] || echo "DANGLING: [[$n]]"; done
+grep -rnE '\bdue\b[^.;]{0,40}\b([0-9]{4}-)?[0-9]{2}-[0-9]{2}\b' . --include='feedback_*.md' --include='reference_*.md' --include='user_*.md' | sed 's/^/MISPLACED DUE: /'
 ```
 
-Counts must match and nothing may print. (The `session-memory` mod shows the same check in a pane.)
+Counts must match and nothing may print. (The `session-memory` mod shows the same check in a pane, plus every passed due date.)
 
 ### 6. Refresh the usage stats
 
@@ -111,7 +116,7 @@ The user is about to erase this conversation on the strength of this report. The
 
 > Not saved: the review thread on the PR, because the findings are on the PR. Not saved: the flaky test run, because it was state, not knowledge.
 
-**What is still open and lives only here.** Anything unfinished that is not on a PR, in a ticket, or in memory. This is the real risk of clearing, so be specific and offer to capture it before they do.
+**What is still open and lives only here.** Anything unfinished that is not on a PR, in a ticket, or in memory. This is the real risk of clearing, so be specific and offer to capture it before they do: a follow-up with a date becomes a `due YYYY-MM-DD` line in its project memory (step 3).
 
 **Then the two commands**, with a rename that will be findable in a `/resume` list months from now:
 
