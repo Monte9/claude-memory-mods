@@ -7,6 +7,6 @@
     "url": "https://github.com/Monte9"
   },
   "types": "./types/index.d.ts",
-  "repository": "https://github.com/Monte9/claude-mods",
+  "repository": "https://github.com/Monte9/claude-memory-mods",
   "license": "MIT"
 }
