@@ -19,14 +19,14 @@ import {
 import { buildReport, formatDay, sectionsOf } from './summary'
 import type { MemoryFile } from './summary'
 
-const PANE = 'session-memory'
+const PANE = 'view-memory'
 const TOP: View = { folder: null, section: null, memory: null, file: null, query: '', fromTop: false }
-const library = atom({ plugin: 'session-memory', key: 'library' } as const, null)
-const view = atom({ plugin: 'session-memory', key: 'view' } as const, TOP)
-const measured = atom({ plugin: 'session-memory', key: 'measured' } as const, null)
-const opened = atom({ plugin: 'session-memory', key: 'opened' } as const, null)
-const reread = atom({ plugin: 'session-memory', key: 'reread' } as const, null)
-const isNudged = atom({ plugin: 'session-memory', key: 'isNudged' } as const, false)
+const library = atom({ plugin: 'view-memory', key: 'library' } as const, null)
+const view = atom({ plugin: 'view-memory', key: 'view' } as const, TOP)
+const measured = atom({ plugin: 'view-memory', key: 'measured' } as const, null)
+const opened = atom({ plugin: 'view-memory', key: 'opened' } as const, null)
+const reread = atom({ plugin: 'view-memory', key: 'reread' } as const, null)
+const isNudged = atom({ plugin: 'view-memory', key: 'isNudged' } as const, false)
 
 const clip = (text: string, max: number): string =>
   text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text
@@ -147,7 +147,7 @@ async function measureReread($: Engine): Promise<number> {
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
-      name: 'session-memory',
+      name: 'view-memory',
       description: 'Open the Memory pane: every auto-memory folder, with search, overdue items and health checks',
     })
     return next(e)
@@ -174,12 +174,12 @@ export const register: Register = on => {
         await $.ui.toast(nudge)
       }
     } catch (reason) {
-      $.ui.log(`session-memory: ${String(reason)}`)
+      $.ui.log(`view-memory: ${String(reason)}`)
     }
     return result
   })
 
-  on('command.run', { command: 'session-memory' }, async $ => {
+  on('command.run', { command: 'view-memory' }, async $ => {
     await measureReread($).catch(() => undefined)
     const current = await refresh($)
     if (!current) return { text: 'No auto-memory folders yet.' }
@@ -193,7 +193,7 @@ export const register: Register = on => {
     const { Box, Button, Markdown, Text } = elements
     const Input = 'Input' in elements ? elements.Input : undefined
     const lib = await read($, library)
-    if (lib === null) return <Text dimColor>Run /session-memory to load your memory.</Text>
+    if (lib === null) return <Text dimColor>Run /view-memory to load your memory.</Text>
 
     const at = await read($, view)
     const go = async (next: View, focusKey: string) => {

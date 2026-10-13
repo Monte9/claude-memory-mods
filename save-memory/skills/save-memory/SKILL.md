@@ -1,10 +1,10 @@
 ---
-name: session-wrap
-description: Consolidate what this session learned into auto memory, then hand back the commands to rename and clear. Captures durable facts, folds them into existing memories rather than adding neighbours, verifies the index, and reports what the session cost. Use when finishing a topic, before switching to unrelated work, or when a session has run long.
+name: save-memory
+description: Save what this session learned to auto memory, then hand back the commands to rename and clear. Captures durable facts, folds them into existing memories rather than adding neighbours, verifies the index, and reports what the session cost. Use when finishing a topic, before switching to unrelated work, or when a session has run long.
 allowed-tools: Bash(node ${CLAUDE_SKILL_DIR}/usage-report.mjs*)
 ---
 
-# Session wrap
+# Save memory
 
 Close out this session so `/clear` is safe. The conversation is disposable; anything worth keeping must be in memory before it goes.
 
@@ -18,7 +18,7 @@ Usage tracks session length, not how much was asked for. Every turn re-reads the
 
 ### 0. Read the user's own rules
 
-If `~/.claude/session-wrap.md` exists, read it first. It holds this user's additions: where their external docs live, extra memory fields, a ship log, who else reads their memory. Where it and this file disagree, it wins.
+If `~/.claude/save-memory.md` exists, read it first. It holds this user's additions: where their external docs live, extra memory fields, a ship log, who else reads their memory. Where it and this file disagree, it wins.
 
 ### 1. Find what is durable
 
@@ -60,7 +60,7 @@ Add a one-line index entry to `MEMORY.md`. Write the line to say **when to reach
 
 **A project memory lives while its work is new or in progress.** Once the work ships, fold what still needs watching (checks, due dates, open follow-ups, traps) into the shipped-work file the user's rules name, then delete the project memory and repoint links to it; with no such file, keep only what a future decision needs.
 
-**Due dates live only in project memories,** each on the line that says what is due, written `due YYYY-MM-DD` so a search or the `session-memory` pane's Overdue list finds every one. A feedback, reference or user memory holds no deadline: move the date into the project it belongs to and leave the method behind. When a due item is done, record the result and delete the due line, or it stays overdue forever.
+**Due dates live only in project memories,** each on the line that says what is due, written `due YYYY-MM-DD` so a search or the `view-memory` pane's Overdue list finds every one. A feedback, reference or user memory holds no deadline: move the date into the project it belongs to and leave the method behind. When a due item is done, record the result and delete the due line, or it stays overdue forever.
 
 ### 4. Ship log (optional)
 
@@ -82,7 +82,7 @@ grep -ohE '\[\[[A-Za-z0-9_-]+\]\]' *.md | tr -d '[]' | sort -u | while read n; d
 grep -rnE '\bdue\b[^.;]{0,40}\b([0-9]{4}-)?[0-9]{2}-[0-9]{2}\b' . --include='feedback_*.md' --include='reference_*.md' --include='user_*.md' | sed 's/^/MISPLACED DUE: /'
 ```
 
-Counts must match and nothing may print. (The `session-memory` mod shows the same check in a pane, plus every passed due date.)
+Counts must match and nothing may print. (The `view-memory` mod shows the same check in a pane, plus every passed due date.)
 
 ### 6. Refresh the usage stats
 

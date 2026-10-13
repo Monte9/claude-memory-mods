@@ -124,7 +124,7 @@ test('writes sizes and paths the way a reader says them', () => {
 
 test('nudges to save and clear only once each reply re-reads 150k tokens', () => {
   expect(rereadNudge(149_999)).toBeUndefined()
-  expect(rereadNudge(182_400)).toBe('Each reply now re-reads 182k tokens. When this topic is done: /session-wrap, then /clear.')
+  expect(rereadNudge(182_400)).toBe('Each reply now re-reads 182k tokens. When this topic is done: /save-memory, then /clear.')
 })
 
 test('summarizes the whole library in one line', () => {

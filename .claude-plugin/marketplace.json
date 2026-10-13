@@ -7,14 +7,14 @@
   "description": "Claude Code mods by Monte Thakkar",
   "plugins": [
     {
-      "name": "session-memory",
-      "source": "./session-memory",
-      "description": "/session-memory: a side pane listing this project's auto-memory files by type, with the index check"
+      "name": "view-memory",
+      "source": "./view-memory",
+      "description": "/view-memory: a pane browsing every auto-memory folder, with search, overdue items, health checks and what each session loads, and a nudge to save once a session runs long"
     },
     {
-      "name": "session-wrap",
-      "source": "./session-wrap",
-      "description": "/session-wrap: save what this session learned to auto memory under a strict bar, verify the index, report the session's cost, then hand back /rename and /clear"
+      "name": "save-memory",
+      "source": "./save-memory",
+      "description": "/save-memory: save what this session learned to auto memory under a strict bar, verify the index, report the session's cost, then hand back /rename and /clear"
     }
   ]
 }

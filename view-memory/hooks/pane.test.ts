@@ -69,13 +69,13 @@ for (const surface of ['terminal', 'desktop'] as const) {
   test(`${surface}: overdue and folders up top, a folder's health, then a type, a memory and Close`, async ($, on) => {
     fakeHome(on)
     const reply = await $.command.run({
-      command: 'session-memory',
+      command: 'view-memory',
       args: '',
       origin: { kind: 'composer' },
       presentation: { isFullscreen: false, columns: 80 },
     })
     expect(reply.text).toContain('1 overdue')
-    const ui = await $.ui.mount({ plugin: 'session-memory', surface, component: 'Pane', props: PANE_PROPS, requestId: 'session-memory' })
+    const ui = await $.ui.mount({ plugin: 'view-memory', surface, component: 'Pane', props: PANE_PROPS, requestId: 'view-memory' })
 
     expect(await ui.find({ key: 'search' })).toBeDefined()
     expect((await ui.find({ key: 'due-0' }))?.text).toContain('Launch')
@@ -105,8 +105,8 @@ for (const surface of ['terminal', 'desktop'] as const) {
 
   test(`${surface}: search opens a match, and Close comes back to the results`, async ($, on) => {
     fakeHome(on)
-    await $.command.run({ command: 'session-memory', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 80 } })
-    const ui = await $.ui.mount({ plugin: 'session-memory', surface, component: 'Pane', props: PANE_PROPS, requestId: 'session-memory' })
+    await $.command.run({ command: 'view-memory', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 80 } })
+    const ui = await $.ui.mount({ plugin: 'view-memory', surface, component: 'Pane', props: PANE_PROPS, requestId: 'view-memory' })
 
     await ui.input({ key: 'search', text: 'sentences' })
     expect(await ui.find({ key: 'hit--work-demo-feedback_style' })).toBeDefined()
@@ -136,17 +136,17 @@ test('a heavy session gets one toast, and the pane says it up top', async ($, on
   tokens = 182_400
   await $.turn.complete({ ...turn, turnId: 't2' })
   await $.turn.complete({ ...turn, turnId: 't3' })
-  expect(toasts).toEqual(['Each reply now re-reads 182k tokens. When this topic is done: /session-wrap, then /clear.'])
+  expect(toasts).toEqual(['Each reply now re-reads 182k tokens. When this topic is done: /save-memory, then /clear.'])
 
-  await $.command.run({ command: 'session-memory', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 80 } })
-  const ui = await $.ui.mount({ plugin: 'session-memory', surface: 'desktop', component: 'Pane', props: PANE_PROPS, requestId: 'session-memory' })
+  await $.command.run({ command: 'view-memory', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 80 } })
+  const ui = await $.ui.mount({ plugin: 'view-memory', surface: 'desktop', component: 'Pane', props: PANE_PROPS, requestId: 'view-memory' })
   expect(await ui.find({ text: /re-reads 182k tokens/ })).toBeDefined()
 })
 
 test('mobile draws the browser without the search field it has no element for', async ($, on) => {
   fakeHome(on)
-  await $.command.run({ command: 'session-memory', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 80 } })
-  const ui = await $.ui.mount({ plugin: 'session-memory', surface: 'mobile', component: 'Pane', props: PANE_PROPS, requestId: 'session-memory' })
+  await $.command.run({ command: 'view-memory', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 80 } })
+  const ui = await $.ui.mount({ plugin: 'view-memory', surface: 'mobile', component: 'Pane', props: PANE_PROPS, requestId: 'view-memory' })
   expect(await ui.find({ key: 'search' })).toBeUndefined()
   expect(await ui.find({ key: 'folder--work-demo' })).toBeDefined()
 })

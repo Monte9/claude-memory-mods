@@ -46,7 +46,7 @@ export const formatCount = (n: number): string => {
 export const rereadNudge = (tokens: number): string | undefined =>
   tokens < HEAVY_TOKENS
     ? undefined
-    : `Each reply now re-reads ${formatCount(tokens)} tokens. When this topic is done: /session-wrap, then /clear.`
+    : `Each reply now re-reads ${formatCount(tokens)} tokens. When this topic is done: /save-memory, then /clear.`
 
 /** One line of a memory that names a due date which has passed. */
 export type Overdue = {

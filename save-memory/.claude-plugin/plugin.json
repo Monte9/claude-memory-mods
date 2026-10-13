@@ -1,0 +1,8 @@
+{
+  "name": "save-memory",
+  "version": "0.2.0",
+  "description": "/save-memory: save what this session learned to auto memory under a strict bar, verify the index, report the session's cost, then hand back /rename and /clear",
+  "author": { "name": "Monte Thakkar", "url": "https://github.com/Monte9" },
+  "repository": "https://github.com/Monte9/claude-mods",
+  "license": "MIT"
+}

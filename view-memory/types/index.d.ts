@@ -63,7 +63,7 @@ export type OpenedFile = { path: string; kind: string; text: string }
 
 declare module 'claude-code' {
   interface PluginState {
-    'session-memory': {
+    'view-memory': {
       library: Library | null
       view: View
       measured: LoadedFile[] | null
