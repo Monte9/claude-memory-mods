@@ -41,17 +41,17 @@ const folder = (id: string, memories: Memory[], extra: Partial<Folder> = {}): Fo
 })
 
 test('takes one directory name off the front of an encoded project folder', () => {
-  expect(consumeSegment('-Users-me-Projects-rosebud-react', 'Users')).toBe('-me-Projects-rosebud-react')
-  expect(consumeSegment('-rosebud-react', 'rosebud')).toBe('-react')
-  expect(consumeSegment('-rosebud-react', 'rosebud-react')).toBe('')
-  expect(consumeSegment('--slack-agent-workspace', '.slack-agent')).toBe('-workspace')
-  expect(consumeSegment('-rosebudx', 'rosebud')).toBeUndefined()
+  expect(consumeSegment('-Users-me-Projects-acme-web', 'Users')).toBe('-me-Projects-acme-web')
+  expect(consumeSegment('-acme-web', 'acme')).toBe('-web')
+  expect(consumeSegment('-acme-web', 'acme-web')).toBe('')
+  expect(consumeSegment('--bot-workspace', '.bot')).toBe('-workspace')
+  expect(consumeSegment('-acmex', 'acme')).toBeUndefined()
 })
 
 test('finds due dates that have passed, and only those', () => {
   const at = (body: string, modified = '2026-10-09') => overdueIn(memory('m', { body, modified }), '2026-10-13')
-  expect(at('- Check due 10-10 (Monte asked).')).toEqual([{ date: '2026-10-10', line: 'Check due 10-10 (Monte asked).' }])
-  expect(at('tap rate by writer due on the 10-10 UTC day').map(item => item.date)).toEqual(['2026-10-10'])
+  expect(at('- Check due 10-10 (Sam asked).')).toEqual([{ date: '2026-10-10', line: 'Check due 10-10 (Sam asked).' }])
+  expect(at('signup rate by cohort due on the 10-10 UTC day').map(item => item.date)).toEqual(['2026-10-10'])
   expect(at('A ticket due 2026-09-30 for the move.').map(item => item.date)).toEqual(['2026-09-30'])
   expect(at('Ship it, due 2999-01-01.')).toEqual([])
   expect(at('The report was due; unconfirmed as of 10-10.')).toEqual([])

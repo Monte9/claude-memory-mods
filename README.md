@@ -60,7 +60,8 @@ A mod runs with your permissions, like any plugin. Read its code first, or list 
 Clone the repo and add your checkout as the marketplace instead. Claude Code then reads each mod from the folder, so an edit plus `/reload-plugins` is the whole loop:
 
 ```bash
-claude plugin marketplace add ~/Projects/claude-memory-mods
+git clone https://github.com/Monte9/claude-memory-mods
+claude plugin marketplace add ./claude-memory-mods
 ```
 
 Before committing a change: `claude plugin validate <mod>` and `claude plugin test <mod>`.
