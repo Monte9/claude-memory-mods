@@ -70,7 +70,7 @@ export const register: Register = on => {
     const current = await refresh($)
     if (!current) return { text: 'No auto-memory folder for this project yet.' }
     await update($, view, () => OVERVIEW)
-    await $.ui.open({ id: PANE, title: 'Memory' })
+    await $.ui.open({ id: PANE, title: 'Memory', focus: true })
     return { text: summaryLine(current) }
   })
 
@@ -80,7 +80,11 @@ export const register: Register = on => {
     if (current === null) return <Text dimColor>Run /session-memory to load this project's memory.</Text>
 
     const at = await read($, view)
-    const go = (next: View) => update($, view, () => next)
+    const go = async (next: View, focusKey: string) => {
+      await update($, view, () => next)
+      // The pressed Button leaves the drawing, so without this the pane loses the keyboard and the next click only takes it back.
+      await $.ui.focus({ requestId: PANE, key: focusKey }).catch(() => undefined)
+    }
     const today = new Date().toISOString().slice(0, 10)
     const sections = sectionsOf(current)
     const memory = current.memories.find(m => m.name === at.memory)
@@ -91,12 +95,12 @@ export const register: Register = on => {
     ]
 
     if (memory && section) {
-      const toList = () => go({ section: section.type, memory: null })
+      const toList = () => go({ section: section.type, memory: null }, `open-${memory.name}`)
       return (
         <Box flexDirection="column" rowGap={1}>
           <Box justifyContent="space-between" alignItems="center">
             <Box columnGap={1}>
-              <Button key="crumb-overview" plain dimColor onPress={() => go(OVERVIEW)}>
+              <Button key="crumb-overview" plain dimColor onPress={() => go(OVERVIEW, `open-${section.type}`)}>
                 Memory
               </Button>
               <Text dimColor>›</Text>
@@ -128,7 +132,7 @@ export const register: Register = on => {
       return (
         <Box flexDirection="column" rowGap={1}>
           <Box justifyContent="space-between" alignItems="center">
-            <Button key="back-overview" plain dimColor onPress={() => go(OVERVIEW)}>
+            <Button key="back-overview" plain dimColor onPress={() => go(OVERVIEW, `open-${section.type}`)}>
               ‹ All memory
             </Button>
             <Button key="refresh" label="Refresh" onPress={() => refresh($)} />
@@ -155,7 +159,7 @@ export const register: Register = on => {
                   plain
                   label={`${m.title} ›`}
                   hover={{ color: 'claude', bold: true }}
-                  onPress={() => go({ section: section.type, memory: m.name })}
+                  onPress={() => go({ section: section.type, memory: m.name }, 'close')}
                 />
                 <Text dimColor>{formatDay(m.modified, today)}</Text>
               </Box>
@@ -204,7 +208,9 @@ export const register: Register = on => {
                 plain
                 label={`${s.label} ›`}
                 hover={{ color: 'claude', bold: true }}
-                onPress={() => go({ section: s.type, memory: null })}
+                onPress={() =>
+                  go({ section: s.type, memory: null }, s.memories[0] ? `open-${s.memories[0].name}` : 'back-overview')
+                }
               />
               <Text dimColor>{plural(s.memories.length, 'memory', 'memories')}</Text>
             </Box>
