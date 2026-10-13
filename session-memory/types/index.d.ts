@@ -1,6 +1,8 @@
 /** One auto-memory file, read from its frontmatter and body. */
 export type Memory = {
   name: string
+  /** The link text MEMORY.md gives the file, else a title made from its name. */
+  title: string
   type: string
   description: string
   body: string
@@ -17,8 +19,11 @@ export type Report = {
   missing: string[]
 }
 
+/** Where the pane is: the overview (no section), one type's list, or one memory open. */
+export type View = { section: string | null; memory: string | null }
+
 declare module 'claude-code' {
   interface PluginState {
-    'session-memory': { report: Report | null; selected: string | null }
+    'session-memory': { report: Report | null; view: View }
   }
 }

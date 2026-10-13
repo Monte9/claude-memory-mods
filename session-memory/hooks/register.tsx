@@ -1,24 +1,19 @@
 import { atom, read, update } from 'claude-code'
-import type { Engine, Register } from 'claude-code'
+import type { EngineInterface as Engine, Register } from 'claude-code'
 
-import type { Report } from '../types'
-import { TYPES, buildReport, summaryLine } from './summary'
+import type { Report, View } from '../types'
+import { buildReport, formatDay, sectionsOf, summaryLine } from './summary'
 import type { MemoryFile } from './summary'
 
 const PANE = 'session-memory'
+const OVERVIEW: View = { section: null, memory: null }
 const report = atom({ plugin: 'session-memory', key: 'report' } as const, null)
-const selected = atom({ plugin: 'session-memory', key: 'selected' } as const, null)
-
-const LABELS: Record<string, string> = {
-  user: 'User',
-  feedback: 'Feedback',
-  project: 'Project',
-  reference: 'Reference',
-  other: 'Other',
-}
+const view = atom({ plugin: 'session-memory', key: 'view' } as const, OVERVIEW)
 
 const clip = (text: string, max: number): string =>
   text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text
+
+const plural = (count: number, one: string, many = `${one}s`): string => `${count} ${count === 1 ? one : many}`
 
 /** Claude Code's project folder name: every character that isn't a letter or digit becomes '-'. */
 const encode = (path: string): string => path.replace(/[^a-zA-Z0-9]/g, '-')
@@ -74,6 +69,7 @@ export const register: Register = on => {
   on('command.run', { command: 'session-memory' }, async $ => {
     const current = await refresh($)
     if (!current) return { text: 'No auto-memory folder for this project yet.' }
+    await update($, view, () => OVERVIEW)
     await $.ui.open({ id: PANE, title: 'Memory' })
     return { text: summaryLine(current) }
   })
@@ -82,63 +78,144 @@ export const register: Register = on => {
     const { Box, Button, Markdown, Text } = $.ui.resolve(e)
     const current = await read($, report)
     if (current === null) return <Text dimColor>Run /session-memory to load this project's memory.</Text>
-    const selectedName = await read($, selected)
-    const chosen = current.memories.find(memory => memory.name === selectedName)
+
+    const at = await read($, view)
+    const go = (next: View) => update($, view, () => next)
+    const today = new Date().toISOString().slice(0, 10)
+    const sections = sectionsOf(current)
+    const memory = current.memories.find(m => m.name === at.memory)
+    const section = sections.find(s => (memory ? s.memories.includes(memory) : s.type === at.section))
     const issues = [
       ...current.unindexed.map(name => `${name} isn't linked from MEMORY.md`),
       ...current.missing.map(name => `MEMORY.md links ${name}, which doesn't exist`),
     ]
-    const types = [...TYPES, ...(current.memories.some(m => !(TYPES as readonly string[]).includes(m.type)) ? ['other'] : [])]
+
+    if (memory && section) {
+      const toList = () => go({ section: section.type, memory: null })
+      return (
+        <Box flexDirection="column" rowGap={1}>
+          <Box justifyContent="space-between" alignItems="center">
+            <Box columnGap={1}>
+              <Button key="crumb-overview" plain dimColor onPress={() => go(OVERVIEW)}>
+                Memory
+              </Button>
+              <Text dimColor>›</Text>
+              <Button key="crumb-section" plain dimColor onPress={toList}>
+                {section.label}
+              </Button>
+            </Box>
+            <Button key="close" label="Close" onPress={toList} />
+          </Box>
+          <Box flexDirection="column" rowGap={1} borderStyle="round" borderColor="claude" paddingX={2} paddingY={1}>
+            <Box flexDirection="column">
+              <Text bold>{memory.title}</Text>
+              <Text dimColor>
+                {section.label} · updated {formatDay(memory.modified, today)} · {memory.name}.md
+              </Text>
+            </Box>
+            {memory.description !== '' && (
+              <Text italic dimColor>
+                {memory.description}
+              </Text>
+            )}
+            <Markdown text={memory.body} />
+          </Box>
+        </Box>
+      )
+    }
+
+    if (section) {
+      return (
+        <Box flexDirection="column" rowGap={1}>
+          <Box justifyContent="space-between" alignItems="center">
+            <Button key="back-overview" plain dimColor onPress={() => go(OVERVIEW)}>
+              ‹ All memory
+            </Button>
+            <Button key="refresh" label="Refresh" onPress={() => refresh($)} />
+          </Box>
+          <Box flexDirection="column">
+            <Text bold>
+              {section.label} <Text dimColor>· {plural(section.memories.length, 'memory', 'memories')}</Text>
+            </Text>
+            <Text dimColor>{section.blurb}</Text>
+          </Box>
+          {section.memories.length === 0 && <Text dimColor>Nothing saved here yet.</Text>}
+          {section.memories.map(m => (
+            <Box
+              key={`row-${m.name}`}
+              flexDirection="column"
+              borderStyle="round"
+              borderColor="subtle"
+              hover={{ borderColor: 'claude' }}
+              paddingX={1}
+            >
+              <Box justifyContent="space-between" columnGap={2}>
+                <Button
+                  key={`open-${m.name}`}
+                  plain
+                  label={`${m.title} ›`}
+                  hover={{ color: 'claude', bold: true }}
+                  onPress={() => go({ section: section.type, memory: m.name })}
+                />
+                <Text dimColor>{formatDay(m.modified, today)}</Text>
+              </Box>
+              {m.description !== '' && <Text dimColor>{clip(m.description, 160)}</Text>}
+            </Box>
+          ))}
+        </Box>
+      )
+    }
 
     return (
       <Box flexDirection="column" rowGap={1}>
-        <Box justifyContent="space-between">
-          <Text bold>
-            {current.project} · {current.memories.length} memories
-          </Text>
+        <Box justifyContent="space-between" alignItems="center">
+          <Box flexDirection="column">
+            <Text bold>{current.project}</Text>
+            <Text dimColor>
+              {plural(current.memories.length, 'memory', 'memories')} ·{' '}
+              {issues.length === 0 ? (
+                <Text color="success">index clean</Text>
+              ) : (
+                <Text color="warning">{plural(issues.length, 'index problem')}</Text>
+              )}
+            </Text>
+          </Box>
           <Button key="refresh" label="Refresh" onPress={() => refresh($)} />
         </Box>
-        {issues.length === 0 ? (
-          <Text color="success">Index clean: every file is linked, and every link resolves.</Text>
-        ) : (
-          <Box flexDirection="column">
+        {issues.length > 0 && (
+          <Box flexDirection="column" borderStyle="round" borderColor="warning" paddingX={1}>
             {issues.map(issue => (
               <Text color="warning">{issue}</Text>
             ))}
           </Box>
         )}
-        {types.map(type => {
-          const group = current.memories.filter(memory =>
-            type === 'other' ? !(TYPES as readonly string[]).includes(memory.type) : memory.type === type,
-          )
-          return (
-            <Box key={`type-${type}`} flexDirection="column">
-              <Text bold color="claude">
-                {LABELS[type]} · {group.length}
-              </Text>
-              {group.length === 0 && <Text dimColor>none</Text>}
-              {group.map(memory => (
-                <Button
-                  key={`memory-${memory.name}`}
-                  plain
-                  onPress={() => update($, selected, now => (now === memory.name ? null : memory.name))}
-                >
-                  {memory.name === chosen?.name ? '▾ ' : '▸ '}
-                  {memory.name} <Text dimColor>{clip(memory.description, 90)}</Text>
-                </Button>
-              ))}
+        {sections.map(s => (
+          <Box
+            key={`card-${s.type}`}
+            flexDirection="column"
+            borderStyle="round"
+            borderColor="subtle"
+            hover={{ borderColor: 'claude' }}
+            paddingX={1}
+          >
+            <Box justifyContent="space-between" columnGap={2}>
+              <Button
+                key={`open-${s.type}`}
+                plain
+                label={`${s.label} ›`}
+                hover={{ color: 'claude', bold: true }}
+                onPress={() => go({ section: s.type, memory: null })}
+              />
+              <Text dimColor>{plural(s.memories.length, 'memory', 'memories')}</Text>
             </Box>
-          )
-        })}
-        {chosen && (
-          <Box flexDirection="column">
-            <Text bold>{chosen.name}</Text>
-            <Text dimColor>
-              {LABELS[chosen.type] ?? chosen.type} · modified {chosen.modified || 'unknown'}
-            </Text>
-            <Markdown text={chosen.body} />
+            <Text dimColor>{s.blurb}</Text>
+            {s.latest && (
+              <Text dimColor>
+                Latest: {s.latest.title}, {formatDay(s.latest.modified, today)}
+              </Text>
+            )}
           </Box>
-        )}
+        ))}
         <Text dimColor>{current.folder}</Text>
       </Box>
     )
