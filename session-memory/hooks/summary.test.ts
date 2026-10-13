@@ -1,6 +1,6 @@
 import { expect, test } from 'claude-code/testing'
 
-import { buildReport, formatDay, parseMemory, sectionsOf, summaryLine, typeOf } from './summary'
+import { buildReport, formatDay, parseMemory, sectionsOf, typeOf } from './summary'
 
 const memory = (type: string, extra = '') =>
   `---\nname: x\ndescription: "A short line"\nmetadata:\n  type: ${type}\n${extra}---\n\nThe body.`
@@ -19,7 +19,7 @@ test('parses description, body and the modified date', () => {
   expect(parsed.modified).toBe('2026-10-07')
 })
 
-test('flags files out of step with the index, and summarizes in one line', () => {
+test('flags files out of step with the index', () => {
   const files = [
     { name: 'user_a.md', text: memory('user') },
     { name: 'feedback_b.md', text: memory('feedback') },
@@ -29,9 +29,13 @@ test('flags files out of step with the index, and summarizes in one line', () =>
   const report = buildReport(files, index, 'demo', '/m')
   expect(report.unindexed).toEqual(['project_c.md'])
   expect(report.missing).toEqual(['project_gone.md'])
-  expect(summaryLine(report)).toBe(
-    'demo: 3 memories (1 user · 1 feedback · 1 project · 0 reference), 2 index problems. Details in the Memory pane.',
-  )
+})
+
+test('keeps a symlinked memory to its metadata and the folder it points into', () => {
+  const parsed = parseMemory({ name: 'feedback_x.md', text: memory('feedback'), linkTo: '-src' })
+  expect(parsed.type).toBe('feedback')
+  expect(parsed.body).toBe('')
+  expect(parsed.linkTo).toBe('-src')
 })
 
 test('titles a memory by its MEMORY.md link, else by its file name', () => {

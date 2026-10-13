@@ -2,7 +2,8 @@ import type { Memory, Report } from '../types'
 
 export const TYPES = ['user', 'feedback', 'project', 'reference'] as const
 
-export type MemoryFile = { name: string; text: string; mtimeMs?: number }
+/** A memory file as read; `linkTo` names the scanned folder it is a symlink into, `text` being that file's. */
+export type MemoryFile = { name: string; text: string; mtimeMs?: number; linkTo?: string }
 
 /** One type's memories, as the overview card and its list show them. */
 export type Section = {
@@ -57,8 +58,9 @@ export function parseMemory(file: MemoryFile, title?: string): Memory {
     title: title || titleFromName(name),
     type: typeOf(file),
     description: field(frontmatter, 'description'),
-    body,
+    body: file.linkTo ? '' : body,
     modified,
+    ...(file.linkTo ? { linkTo: file.linkTo } : {}),
   }
 }
 
@@ -97,14 +99,4 @@ export function formatDay(day: string, today: string): string {
   if (Date.parse(`${today}T00:00:00Z`) - Date.parse(`${day}T00:00:00Z`) === 86_400_000) return 'yesterday'
   const short = `${MONTHS[Number(day.slice(5, 7)) - 1]} ${Number(day.slice(8, 10))}`
   return day.slice(0, 4) === today.slice(0, 4) ? short : `${short}, ${day.slice(0, 4)}`
-}
-
-/** One line for the command's reply: counts by type and whether the index is clean. */
-export function summaryLine(report: Report): string {
-  const counts = TYPES.map(type => `${report.memories.filter(m => m.type === type).length} ${type}`)
-  const other = report.memories.filter(m => !(TYPES as readonly string[]).includes(m.type)).length
-  if (other) counts.push(`${other} other`)
-  const issues = report.unindexed.length + report.missing.length
-  const index = issues ? `${issues} index ${issues === 1 ? 'problem' : 'problems'}` : 'index clean'
-  return `${report.project}: ${report.memories.length} memories (${counts.join(' · ')}), ${index}. Details in the Memory pane.`
 }
