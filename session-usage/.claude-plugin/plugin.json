@@ -1,9 +1,0 @@
-{
-  "name": "session-usage",
-  "version": "0.1.0",
-  "description": "/session-usage: a side pane showing what each reply costs right now, your rate limits, this week against last, and which sessions carry the bill",
-  "author": { "name": "Monte Thakkar", "url": "https://github.com/Monte9" },
-  "repository": "https://github.com/Monte9/claude-mods",
-  "license": "MIT",
-  "types": "./types/index.d.ts"
-}

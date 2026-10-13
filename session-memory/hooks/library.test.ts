@@ -5,10 +5,12 @@ import {
   consumeSegment,
   findOverdue,
   formatChars,
+  formatCount,
   formatTokens,
   librarySummary,
   mirrorStatus,
   overdueIn,
+  rereadNudge,
   search,
   tildePath,
 } from './library'
@@ -112,8 +114,17 @@ test('writes sizes and paths the way a reader says them', () => {
   expect(formatChars(8681)).toBe('8.7 KB')
   expect(formatChars(341_000)).toBe('341 KB')
   expect(formatTokens(8681)).toBe('~2.2k tokens')
+  expect(formatCount(940)).toBe('940')
+  expect(formatCount(12_340)).toBe('12.3k')
+  expect(formatCount(182_400)).toBe('182k')
+  expect(formatCount(1_240_000)).toBe('1.2M')
   expect(tildePath('/Users/me/Projects/app', '/Users/me')).toBe('~/Projects/app')
   expect(tildePath('/opt/app', '/Users/me')).toBe('/opt/app')
+})
+
+test('nudges to save and clear only once each reply re-reads 150k tokens', () => {
+  expect(rereadNudge(149_999)).toBeUndefined()
+  expect(rereadNudge(182_400)).toBe('Each reply now re-reads 182k tokens. When this topic is done: /session-wrap, then /clear.')
 })
 
 test('summarizes the whole library in one line', () => {

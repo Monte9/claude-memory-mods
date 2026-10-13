@@ -119,6 +119,30 @@ for (const surface of ['terminal', 'desktop'] as const) {
   })
 }
 
+test('a heavy session gets one toast, and the pane says it up top', async ($, on) => {
+  fakeHome(on)
+  let tokens = 90_000
+  const toasts: string[] = []
+  on('session.usage', async () => ({ value: { startedAt: 0, context: { tokens, window: 1_000_000 }, rateLimits: [] } }))
+  on('ui.toast', async (_$, e) => {
+    toasts.push(e.text)
+    return { value: undefined }
+  })
+  on('turn.complete', async () => ({ text: 'ok' }))
+  const turn = { answer: 'ok', durationMs: 1, isAborted: false, turnId: 't1', reason: 'answer' } as const
+
+  await $.turn.complete(turn)
+  expect(toasts).toEqual([])
+  tokens = 182_400
+  await $.turn.complete({ ...turn, turnId: 't2' })
+  await $.turn.complete({ ...turn, turnId: 't3' })
+  expect(toasts).toEqual(['Each reply now re-reads 182k tokens. When this topic is done: /session-wrap, then /clear.'])
+
+  await $.command.run({ command: 'session-memory', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 80 } })
+  const ui = await $.ui.mount({ plugin: 'session-memory', surface: 'desktop', component: 'Pane', props: PANE_PROPS, requestId: 'session-memory' })
+  expect(await ui.find({ text: /re-reads 182k tokens/ })).toBeDefined()
+})
+
 test('mobile draws the browser without the search field it has no element for', async ($, on) => {
   fakeHome(on)
   await $.command.run({ command: 'session-memory', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 80 } })

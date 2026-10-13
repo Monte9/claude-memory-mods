@@ -32,6 +32,22 @@ export const formatTokens = (chars: number): string => {
   return tokens < 1000 ? `~${tokens} tokens` : `~${(tokens / 1000).toFixed(1)}k tokens`
 }
 
+/** Above this many tokens re-read per reply, the session is worth saving and clearing. */
+export const HEAVY_TOKENS = 150_000
+
+/** 1.2k, 180k, 1.2M: the units Claude Code's own usage views use. */
+export const formatCount = (n: number): string => {
+  if (n >= 1e6) return `${(n / 1e6).toFixed(1)}M`
+  if (n >= 1e3) return `${(n / 1e3).toFixed(n >= 1e5 ? 0 : 1)}k`
+  return String(Math.round(n))
+}
+
+/** The nudge once each reply re-reads a heavy history; undefined below the line. */
+export const rereadNudge = (tokens: number): string | undefined =>
+  tokens < HEAVY_TOKENS
+    ? undefined
+    : `Each reply now re-reads ${formatCount(tokens)} tokens. When this topic is done: /session-wrap, then /clear.`
+
 /** One line of a memory that names a due date which has passed. */
 export type Overdue = {
   folder: string

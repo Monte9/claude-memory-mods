@@ -12,6 +12,7 @@ import {
   librarySummary,
   mirrorStatus,
   plural,
+  rereadNudge,
   search,
   tildePath,
 } from './library'
@@ -24,6 +25,8 @@ const library = atom({ plugin: 'session-memory', key: 'library' } as const, null
 const view = atom({ plugin: 'session-memory', key: 'view' } as const, TOP)
 const measured = atom({ plugin: 'session-memory', key: 'measured' } as const, null)
 const opened = atom({ plugin: 'session-memory', key: 'opened' } as const, null)
+const reread = atom({ plugin: 'session-memory', key: 'reread' } as const, null)
+const isNudged = atom({ plugin: 'session-memory', key: 'isNudged' } as const, false)
 
 const clip = (text: string, max: number): string =>
   text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text
@@ -134,6 +137,13 @@ async function refresh($: Engine): Promise<Library | undefined> {
   return next
 }
 
+/** Reads how many tokens each reply re-reads now; free, no request sent. */
+async function measureReread($: Engine): Promise<number> {
+  const tokens = (await $.session.usage()).context.tokens ?? 0
+  await update($, reread, () => tokens)
+  return tokens
+}
+
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await $.command.register({
@@ -154,7 +164,23 @@ export const register: Register = on => {
     return result
   })
 
+  on('turn.complete', async ($, e, next) => {
+    const result = await next(e)
+    if (e.agentId) return result
+    try {
+      const nudge = rereadNudge(await measureReread($))
+      if (nudge && !(await read($, isNudged))) {
+        await update($, isNudged, () => true)
+        await $.ui.toast(nudge)
+      }
+    } catch (reason) {
+      $.ui.log(`session-memory: ${String(reason)}`)
+    }
+    return result
+  })
+
   on('command.run', { command: 'session-memory' }, async $ => {
+    await measureReread($).catch(() => undefined)
     const current = await refresh($)
     if (!current) return { text: 'No auto-memory folders yet.' }
     await update($, view, () => TOP)
@@ -367,6 +393,7 @@ export const register: Register = on => {
       )
     }
 
+    const nudge = rereadNudge((await read($, reread)) ?? 0)
     const total = lib.folders.reduce((sum, each) => sum + each.memories.filter(m => !m.linkTo).length, 0)
     const isMeasured = load !== lib.estimatedLoad
     const loadChars = load.reduce((sum, file) => sum + file.chars, 0)
@@ -389,6 +416,11 @@ export const register: Register = on => {
           </Box>
           <Button key="refresh" label="Refresh" onPress={() => refresh($)} />
         </Box>
+        {nudge && (
+          <Box borderStyle="round" borderColor="warning" paddingX={1}>
+            <Text color="warning">{nudge}</Text>
+          </Box>
+        )}
         {Input && (
           <Box width="100%">
             <Input

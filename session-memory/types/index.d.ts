@@ -63,6 +63,15 @@ export type OpenedFile = { path: string; kind: string; text: string }
 
 declare module 'claude-code' {
   interface PluginState {
-    'session-memory': { library: Library | null; view: View; measured: LoadedFile[] | null; opened: OpenedFile | null }
+    'session-memory': {
+      library: Library | null
+      view: View
+      measured: LoadedFile[] | null
+      opened: OpenedFile | null
+      /** Tokens each reply re-reads, as the last turn left the context. */
+      reread: number | null
+      /** Whether this session has had the toast to save and clear. */
+      isNudged: boolean
+    }
   }
 }
