@@ -99,6 +99,15 @@ for (const surface of ['terminal', 'desktop'] as const) {
     await ui.press({ key: 'mem-feedback_style' })
     expect(await ui.find({ key: 'close' })).toBeDefined()
     expect(await ui.find({ text: 'Writing style' })).toBeDefined()
+
+    const style = `${APP}/feedback_style.md`
+    const before = FILES[style] ?? ''
+    FILES[style] = memory('feedback', 'How to write prose', 'Shorter sentences.')
+    await ui.press({ key: 'refresh' })
+    FILES[style] = before
+    expect(await ui.find({ text: /Shorter sentences/ })).toBeDefined()
+    expect(await ui.find({ key: 'close' })).toBeDefined()
+
     await ui.press({ key: 'close' })
     expect(await ui.find({ key: 'mem-feedback_style' })).toBeDefined()
   })

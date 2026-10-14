@@ -272,7 +272,10 @@ export const register: Register = on => {
                 {section.label}
               </Button>
             </Box>
-            <Button key="close" label="Close" onPress={close} />
+            <Box columnGap={1}>
+              <Button key="refresh" label="Refresh" onPress={() => refresh($)} />
+              <Button key="close" label="Close" onPress={close} />
+            </Box>
           </Box>
           <Box flexDirection="column" rowGap={1} borderStyle="round" borderColor="claude" paddingX={2} paddingY={1}>
             <Box flexDirection="column">
