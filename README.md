@@ -9,7 +9,7 @@ Claude Code already keeps memory for you: a `MEMORY.md` index and one file per f
 | `/view-memory` | Opens a pane over every project's memory: search, overdue items, and each folder's health |
 | `/save-memory` | Saves what this session learned, under a strict bar, so `/clear` is safe |
 
-Both work in the terminal and in the Code tab of the Claude desktop app.
+Both work in the terminal and in the Code tab of the Claude desktop app. VS Code has no panes, so there `/view-memory` answers in text: the summary and every overdue item.
 
 ## view-memory
 
@@ -35,15 +35,14 @@ Put your own rules (team docs, a ship log, who else reads your memory) in `~/.cl
 
 ## Install
 
-This repo is a plugin marketplace named `monte9`. Each folder is one plugin you can install on its own.
+Type these in a Claude Code terminal session, one at a time. Answer `y` to add the marketplace, then pick the user scope so they load in every session, the desktop app's Code tab included:
 
-```bash
-claude plugin marketplace add Monte9/claude-memory-mods
-claude plugin install view-memory@monte9 --scope user
-claude plugin install save-memory@monte9 --scope user
+```
+/plugin install view-memory --marketplace Monte9/claude-memory-mods
+/plugin install save-memory --marketplace Monte9/claude-memory-mods
 ```
 
-In a session that's already open, run `/reload-plugins`.
+Each folder of this repo is one plugin you can install on its own.
 
 A mod runs with your permissions, like any plugin. Read its code first, or list what it hooks and calls with `claude plugin validate <mod folder>`.
 

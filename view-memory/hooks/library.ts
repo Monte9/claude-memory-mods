@@ -32,6 +32,34 @@ export const formatTokens = (chars: number): string => {
   return tokens < 1000 ? `~${tokens} tokens` : `~${(tokens / 1000).toFixed(1)}k tokens`
 }
 
+/** Whether engine `version` is `floor` or later, by its first three numbers ("2.1.301-dev" counts as 2.1.301). */
+export function isAtLeast(version: string, floor: string): boolean {
+  const numbers = (text: string) => (text.match(/\d+/g) ?? []).slice(0, 3).map(Number)
+  const [have, need] = [numbers(version), numbers(floor)]
+  for (let i = 0; i < 3; i++) {
+    const diff = (have[i] ?? 0) - (need[i] ?? 0)
+    if (diff !== 0) return diff > 0
+  }
+  return true
+}
+
+/** The engine that first draws `Text`'s `size`, `weight`, `mono` and `tabular`; an older one refuses the tree. */
+export const SCALED_SINCE = '2.1.299'
+
+/** `Text` props for each role in the pane: the type scale where the engine has it, else the older `bold`. */
+export const typeScale = (isScaled: boolean) =>
+  isScaled
+    ? ({
+        title: { size: 'title', weight: 'semibold' },
+        heading: { size: 'heading', weight: 'semibold' },
+        meta: { size: 'footnote' },
+        count: { size: 'footnote', tabular: true },
+        path: { mono: true },
+      } as const)
+    : ({ title: { bold: true }, heading: { bold: true }, meta: {}, count: {}, path: {} } as const)
+
+export type TypeScale = ReturnType<typeof typeScale>
+
 /** Above this many tokens re-read per reply, the session is worth saving and clearing. */
 export const HEAVY_TOKENS = 150_000
 
@@ -162,7 +190,16 @@ export function librarySummary(library: Library, today: string): string {
   if (current) parts.push(`${current.project} has ${current.memories.length}`)
   parts.push(overdue ? `${overdue} overdue` : 'nothing overdue')
   parts.push(problems ? plural(problems, 'index problem') : 'every index clean')
-  return `Memory: ${parts.join(', ')}. Details in the Memory pane.`
+  return `Memory: ${parts.join(', ')}.`
+}
+
+/** The library as text, for a surface that shows no pane: the summary line, then each overdue item. */
+export function libraryText(library: Library, today: string): string {
+  const nameOf = (id: string) => library.folders.find(folder => folder.id === id)?.project ?? id
+  const overdue = findOverdue(library.folders, today).map(
+    item => `- ${item.title} (${nameOf(item.folder)}), ${describeDue(item, today)}: ${item.line}`,
+  )
+  return [librarySummary(library, today), ...overdue].join('\n')
 }
 
 /**

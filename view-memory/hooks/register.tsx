@@ -9,12 +9,16 @@ import {
   findOverdue,
   formatChars,
   formatTokens,
+  isAtLeast,
   librarySummary,
+  libraryText,
   mirrorStatus,
   plural,
   rereadNudge,
+  SCALED_SINCE,
   search,
   tildePath,
+  typeScale,
 } from './library'
 import { buildReport, formatDay, sectionsOf } from './summary'
 import type { MemoryFile } from './summary'
@@ -28,8 +32,12 @@ const opened = atom({ plugin: 'view-memory', key: 'opened' } as const, null)
 const reread = atom({ plugin: 'view-memory', key: 'reread' } as const, null)
 const isNudged = atom({ plugin: 'view-memory', key: 'isNudged' } as const, false)
 
-const clip = (text: string, max: number): string =>
-  text.length > max ? `${text.slice(0, max - 1).trimEnd()}…` : text
+/** `text` cut to `max` characters, never under 12 so a narrow pane still names things; `keep: 'end'` keeps a path's file name. */
+const clip = (text: string, max: number, keep: 'start' | 'end' = 'start'): string => {
+  const room = Math.max(12, max)
+  if (text.length <= room) return text
+  return keep === 'start' ? `${text.slice(0, room - 1).trimEnd()}…` : `…${text.slice(text.length - room + 1)}`
+}
 
 /**
  * The paths a session here keys its memory by, most specific first: the git
@@ -184,8 +192,10 @@ export const register: Register = on => {
     const current = await refresh($)
     if (!current) return { text: 'No auto-memory folders yet.' }
     await update($, view, () => TOP)
-    await $.ui.open({ id: PANE, title: 'Memory', focus: true })
-    return { text: librarySummary(current, new Date().toISOString().slice(0, 10)) }
+    const today = new Date().toISOString().slice(0, 10)
+    const shown = await $.ui.open({ id: PANE, title: 'Memory', focus: true })
+    if (!shown.isPlaced) return { text: libraryText(current, today) }
+    return { text: `${librarySummary(current, today)} Details in the Memory pane.` }
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
@@ -204,6 +214,12 @@ export const register: Register = on => {
     const today = new Date().toISOString().slice(0, 10)
     const nameOf = (id: string | undefined) => lib.folders.find(folder => folder.id === id)?.project ?? id ?? ''
     const load = (await read($, measured)) ?? lib.estimatedLoad
+    const scale = await $.session
+      .version()
+      .then(({ base, version }) => typeScale(isAtLeast(base ?? version, SCALED_SINCE)))
+      .catch(() => typeScale(false))
+    // A Button whose label is wider than its room is not drawn at all, so labels are cut to the pane's width.
+    const room = e.props.bodyColumns
 
     if (at.file !== null) {
       const doc = await read($, opened)
@@ -218,12 +234,14 @@ export const register: Register = on => {
               </Button>
               <Text dimColor>› Loaded into every session</Text>
             </Box>
-            <Button key="close" label="Close" onPress={back} />
+            <Button key="close" label="Close" role="dismiss" onPress={back} />
           </Box>
           <Box flexDirection="column" rowGap={1} borderStyle="round" borderColor="claude" paddingX={2} paddingY={1}>
             <Box flexDirection="column">
-              <Text bold>{tildePath(at.file, lib.home)}</Text>
-              <Text dimColor>
+              <Text {...scale.title} {...scale.path}>
+                {tildePath(at.file, lib.home)}
+              </Text>
+              <Text dimColor {...scale.meta}>
                 {doc?.kind ?? 'file'} · {formatChars(text.length)} · {formatTokens(text.length)}
               </Text>
             </Box>
@@ -260,7 +278,7 @@ export const register: Register = on => {
               </Button>
               <Text dimColor>›</Text>
               <Button key="crumb-folder" plain dimColor onPress={() => go({ ...TOP, folder: folder.id }, `type-${section.type}`)}>
-                {clip(folder.project, 40)}
+                {clip(folder.project, room - 44, 'end')}
               </Button>
               <Text dimColor>›</Text>
               <Button
@@ -274,14 +292,14 @@ export const register: Register = on => {
             </Box>
             <Box columnGap={1}>
               <Button key="refresh" label="Refresh" onPress={() => refresh($)} />
-              <Button key="close" label="Close" onPress={close} />
+              <Button key="close" label="Close" role="dismiss" onPress={close} />
             </Box>
           </Box>
           <Box flexDirection="column" rowGap={1} borderStyle="round" borderColor="claude" paddingX={2} paddingY={1}>
             <Box flexDirection="column">
-              <Text bold>{memory.title}</Text>
-              <Text dimColor>
-                {section.label} · updated {formatDay(memory.modified, today)} · {memory.name}.md
+              <Text {...scale.title}>{memory.title}</Text>
+              <Text dimColor {...scale.meta}>
+                {section.label} · updated {formatDay(memory.modified, today)} · <Text {...scale.path}>{memory.name}.md</Text>
                 {memory.linkTo ? ` · symlink into ${nameOf(memory.linkTo)}` : ''}
               </Text>
             </Box>
@@ -301,15 +319,17 @@ export const register: Register = on => {
         <Box flexDirection="column" rowGap={1}>
           <Box justifyContent="space-between" alignItems="center">
             <Button key="back-folder" plain dimColor onPress={() => go({ ...TOP, folder: folder.id }, `type-${section.type}`)}>
-              {`‹ ${clip(folder.project, 50)}`}
+              {`‹ ${clip(folder.project, room - 16, 'end')}`}
             </Button>
             <Button key="refresh" label="Refresh" onPress={() => refresh($)} />
           </Box>
           <Box flexDirection="column">
-            <Text bold>
+            <Text {...scale.title}>
               {section.label} <Text dimColor>· {plural(section.memories.length, 'memory', 'memories')}</Text>
             </Text>
-            <Text dimColor>{section.blurb}</Text>
+            <Text dimColor {...scale.meta}>
+              {section.blurb}
+            </Text>
           </Box>
           {section.memories.length === 0 && <Text dimColor>Nothing saved here yet.</Text>}
           {section.memories.map(m => (
@@ -318,15 +338,19 @@ export const register: Register = on => {
                 <Button
                   key={`mem-${m.name}`}
                   {...link}
-                  label={`${m.title} ›`}
+                  label={`${clip(m.title, room - 22)} ›`}
                   onPress={() => go({ ...TOP, folder: folder.id, section: section.type, memory: m.name, query: at.query }, 'close')}
                 />
-                <Text dimColor>
+                <Text dimColor {...scale.meta}>
                   {formatDay(m.modified, today)}
                   {m.linkTo ? ' · symlink' : ''}
                 </Text>
               </Box>
-              {m.description !== '' && <Text dimColor>{clip(m.description, 160)}</Text>}
+              {m.description !== '' && (
+                <Text dimColor {...scale.meta} wrap="truncate-end">
+                  {m.description}
+                </Text>
+              )}
             </Box>
           ))}
         </Box>
@@ -348,8 +372,8 @@ export const register: Register = on => {
             <Button key="refresh" label="Refresh" onPress={() => refresh($)} />
           </Box>
           <Box flexDirection="column">
-            <Text bold>{folder.project}</Text>
-            <Text dimColor>
+            <Text {...scale.title}>{folder.project}</Text>
+            <Text dimColor {...scale.meta}>
               {plural(folder.memories.length, 'memory', 'memories')}
               {folder.isCurrent ? ' · this project' : ''} · index {formatChars(folder.indexChars)} ·{' '}
               {issues.length === 0 ? (
@@ -358,7 +382,11 @@ export const register: Register = on => {
                 <Text color="warning">{plural(issues.length, 'problem')}</Text>
               )}
             </Text>
-            {folder.mirrorOf && <Text dimColor>Mostly symlinks into {nameOf(folder.mirrorOf)}</Text>}
+            {folder.mirrorOf && (
+              <Text dimColor {...scale.meta}>
+                Mostly symlinks into {nameOf(folder.mirrorOf)}
+              </Text>
+            )}
           </Box>
           {issues.length > 0 && (
             <Box flexDirection="column" borderStyle="round" borderColor="warning" paddingX={1}>
@@ -381,17 +409,23 @@ export const register: Register = on => {
                     )
                   }
                 />
-                <Text dimColor>{plural(s.memories.length, 'memory', 'memories')}</Text>
+                <Text dimColor {...scale.count}>
+                  {plural(s.memories.length, 'memory', 'memories')}
+                </Text>
               </Box>
-              <Text dimColor>{s.blurb}</Text>
+              <Text dimColor {...scale.meta}>
+                {s.blurb}
+              </Text>
               {s.latest && (
-                <Text dimColor>
+                <Text dimColor {...scale.meta} wrap="truncate-end">
                   Latest: {s.latest.title}, {formatDay(s.latest.modified, today)}
                 </Text>
               )}
             </Box>
           ))}
-          <Text dimColor>{folder.folder}</Text>
+          <Text dimColor {...scale.meta} {...scale.path} wrap="truncate-start">
+            {folder.folder}
+          </Text>
         </Box>
       )
     }
@@ -412,8 +446,8 @@ export const register: Register = on => {
       <Box flexDirection="column" rowGap={1}>
         <Box justifyContent="space-between" alignItems="center">
           <Box flexDirection="column">
-            <Text bold>Memory</Text>
-            <Text dimColor>
+            <Text {...scale.title}>Memory</Text>
+            <Text dimColor {...scale.meta}>
               {plural(total, 'memory', 'memories')} in {plural(lib.folders.length, 'folder')}
             </Text>
           </Box>
@@ -439,7 +473,7 @@ export const register: Register = on => {
         {at.query !== '' && (
           <Box flexDirection="column" rowGap={1}>
             <Box justifyContent="space-between" alignItems="center">
-              <Text bold>
+              <Text {...scale.heading}>
                 {plural(hits.length, 'match', 'matches')} for “{clip(at.query, 40)}”
               </Text>
               <Button key="clear-search" plain dimColor label="Clear" onPress={() => go(TOP, 'search')} />
@@ -448,10 +482,21 @@ export const register: Register = on => {
             {hits.map(hit => (
               <Box key={`hitrow-${hit.folder}-${hit.name}`} {...card}>
                 <Box justifyContent="space-between" columnGap={2}>
-                  <Button key={`hit-${hit.folder}-${hit.name}`} {...link} label={`${hit.title} ›`} onPress={() => openFromTop(hit.folder, hit.name)} />
-                  <Text dimColor>{clip(nameOf(hit.folder), 32)}</Text>
+                  <Button
+                    key={`hit-${hit.folder}-${hit.name}`}
+                    {...link}
+                    label={`${clip(hit.title, room - 42)} ›`}
+                    onPress={() => openFromTop(hit.folder, hit.name)}
+                  />
+                  <Text dimColor {...scale.meta}>
+                    {clip(nameOf(hit.folder), 32, 'end')}
+                  </Text>
                 </Box>
-                {hit.snippet !== '' && <Text dimColor>{hit.snippet}</Text>}
+                {hit.snippet !== '' && (
+                  <Text dimColor {...scale.meta}>
+                    {hit.snippet}
+                  </Text>
+                )}
               </Box>
             ))}
           </Box>
@@ -459,17 +504,30 @@ export const register: Register = on => {
 
         {at.query === '' && overdue.length > 0 && (
           <Box flexDirection="column" rowGap={1}>
-            <Text bold color="warning">
+            <Text {...scale.heading} color="warning">
               Overdue · {overdue.length}
             </Text>
             {overdue.map((item, index) => (
               <Box key={`duerow-${index}`} {...card} borderColor="warning">
                 <Box justifyContent="space-between" columnGap={2}>
-                  <Button key={`due-${index}`} {...link} label={`${item.title} ›`} onPress={() => openFromTop(item.folder, item.name)} />
-                  <Text color="warning">{describeDue(item, today)}</Text>
+                  <Button
+                    key={`due-${index}`}
+                    {...link}
+                    label={`${clip(item.title, room - 34)} ›`}
+                    onPress={() => openFromTop(item.folder, item.name)}
+                  />
+                  <Text color="warning" {...scale.count}>
+                    {describeDue(item, today)}
+                  </Text>
                 </Box>
-                <Text dimColor>{item.line}</Text>
-                {lib.folders.length > 1 && <Text dimColor>{nameOf(item.folder)}</Text>}
+                <Text dimColor {...scale.meta}>
+                  {item.line}
+                </Text>
+                {lib.folders.length > 1 && (
+                  <Text dimColor {...scale.meta}>
+                    {nameOf(item.folder)}
+                  </Text>
+                )}
               </Box>
             ))}
           </Box>
@@ -477,7 +535,7 @@ export const register: Register = on => {
 
         {at.query === '' && (
           <Box flexDirection="column" rowGap={1}>
-            <Text bold>Folders</Text>
+            <Text {...scale.heading}>Folders</Text>
             {lib.folders.map(f => {
               const problems = f.unindexed.length + f.missing.length + f.mirrorGaps.length
               const latest = [...f.memories].sort((a, b) => b.modified.localeCompare(a.modified))[0]
@@ -487,45 +545,56 @@ export const register: Register = on => {
                     <Button
                       key={`folder-${f.id}`}
                       {...link}
-                      label={`${clip(f.project, 50)} ›`}
+                      label={`${clip(f.project, room - 22, 'end')} ›`}
                       onPress={() => go({ ...TOP, folder: f.id, query: at.query }, `type-${sectionsOf(f)[0]?.type ?? 'user'}`)}
                     />
-                    <Text dimColor>{plural(f.memories.length, 'memory', 'memories')}</Text>
+                    <Text dimColor {...scale.count}>
+                      {plural(f.memories.length, 'memory', 'memories')}
+                    </Text>
                   </Box>
-                  <Text dimColor>
+                  <Text dimColor {...scale.meta}>
                     {f.isCurrent ? 'This project · ' : ''}
                     {f.mirrorOf ? `symlinks into ${nameOf(f.mirrorOf)} · ` : `index ${formatChars(f.indexChars)} · `}
                     {problems === 0 ? <Text color="success">healthy</Text> : <Text color="warning">{plural(problems, 'problem')}</Text>}
                   </Text>
                   {latest && (
-                    <Text dimColor>
+                    <Text dimColor {...scale.meta} wrap="truncate-end">
                       Latest: {latest.title}, {formatDay(latest.modified, today)}
                     </Text>
                   )}
                 </Box>
               )
             })}
-            {lib.emptyFolders > 0 && <Text dimColor>{plural(lib.emptyFolders, 'empty memory folder')} hidden</Text>}
+            {lib.emptyFolders > 0 && (
+              <Text dimColor {...scale.meta}>
+                {plural(lib.emptyFolders, 'empty memory folder')} hidden
+              </Text>
+            )}
           </Box>
         )}
 
         {at.query === '' && load.length > 0 && (
           <Box flexDirection="column" borderStyle="round" borderColor="subtle" paddingX={1}>
             <Box justifyContent="space-between" columnGap={2}>
-              <Text bold>Loaded into every session here</Text>
-              <Text dimColor>
+              <Text {...scale.heading}>Loaded into every session here</Text>
+              <Text dimColor {...scale.count}>
                 {formatChars(loadChars)} · {formatTokens(loadChars)}
               </Text>
             </Box>
             {load.map((file, index) => (
               <Box key={`loadrow-${index}`} justifyContent="space-between" columnGap={2}>
-                <Button key={`load-${index}`} {...link} label={`${clip(tildePath(file.path, lib.home), 80)} ›`} onPress={() => openFile(file)} />
-                <Text dimColor>
+                <Button
+                  key={`load-${index}`}
+                  {...link}
+                  label={`${clip(tildePath(file.path, lib.home), room - 26, 'end')} ›`}
+                  onPress={() => openFile(file)}
+                />
+                <Text dimColor {...scale.count}>
                   {file.kind} · {formatChars(file.chars)}
                 </Text>
               </Box>
             ))}
-            <Text dimColor>
+            <Text dimColor {...scale.meta}>
               {isMeasured ? 'As this session loaded them.' : 'Estimated from the files on disk; exact once a new session starts with this mod on.'}
             </Text>
           </Box>

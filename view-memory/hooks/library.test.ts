@@ -7,7 +7,9 @@ import {
   formatChars,
   formatCount,
   formatTokens,
+  isAtLeast,
   librarySummary,
+  libraryText,
   mirrorStatus,
   overdueIn,
   rereadNudge,
@@ -130,7 +132,18 @@ test('nudges to save and clear only once each reply re-reads 150k tokens', () =>
 test('summarizes the whole library in one line', () => {
   const current = folder('-app', [memory('a', { body: 'due 2026-10-01' }), memory('b')], { isCurrent: true, project: '~/app' })
   const other = folder('-x', [memory('c')], { unindexed: ['c.md'] })
-  expect(librarySummary({ home: '/h', folders: [current, other], emptyFolders: 0, estimatedLoad: [] }, '2026-10-13')).toBe(
-    'Memory: 3 memories in 2 folders, ~/app has 2, 1 overdue, 1 index problem. Details in the Memory pane.',
-  )
+  const lib = { home: '/h', folders: [current, other], emptyFolders: 0, estimatedLoad: [] }
+  expect(librarySummary(lib, '2026-10-13')).toBe('Memory: 3 memories in 2 folders, ~/app has 2, 1 overdue, 1 index problem.')
+  expect(libraryText(lib, '2026-10-13').split('\n')).toEqual([
+    'Memory: 3 memories in 2 folders, ~/app has 2, 1 overdue, 1 index problem.',
+    '- a (~/app), due Oct 1, 12 days ago: due 2026-10-01',
+  ])
+})
+
+test('compares engine versions by their first three numbers', () => {
+  expect(isAtLeast('2.1.299', '2.1.299')).toBe(true)
+  expect(isAtLeast('2.1.301-dev', '2.1.299')).toBe(true)
+  expect(isAtLeast('2.1.295', '2.1.299')).toBe(false)
+  expect(isAtLeast('2.2.0', '2.1.299')).toBe(true)
+  expect(isAtLeast('10.0.0', '9.9.9')).toBe(true)
 })

@@ -32,8 +32,12 @@ const DIRS: Record<string, string[]> = {
 
 const entry = (name: string, kind: 'file' | 'dir', isLink = false) => ({ name, kind, size: 1, mtimeMs: 0, isLink })
 
-/** Answers the plugin's calls with a home folder holding a project, a mirror of it missing one file, and an empty folder. */
-const fakeHome = (on: On) => {
+/**
+ * Answers the plugin's calls with a home folder holding a project, a mirror of it missing one file, and an empty folder,
+ * on an engine of `version` that draws the pane unless `isPlaced` is false.
+ */
+const fakeHome = (on: On, { isPlaced = true, version = '2.1.295' } = {}) => {
+  on('session.version', async () => ({ value: { version } }))
   on('env.get', async (_$, e) => ({ value: e.name === 'HOME' ? HOME : undefined }))
   on('session.cwd', async () => ({ value: '/work/demo' }))
   on('process.run', async () => ({ deny: 'not a git repository' }))
@@ -53,7 +57,7 @@ const fakeHome = (on: On) => {
     value: { kind: 'file' as const, size: 1, mtimeMs: 0, isLink: e.path in LINKS, realPath: LINKS[e.path] ?? e.path, resolve: true },
   }))
   on('fs.read', async (_$, e) => ({ value: FILES[LINKS[e.path] ?? e.path] ?? '' }))
-  on('ui.open', async () => ({ value: { isPlaced: true } }))
+  on('ui.open', async () => ({ value: isPlaced ? { isPlaced: true } : { isPlaced: false, reason: 'no surface draws panes here' } }))
 }
 
 const PANE_PROPS = {
@@ -97,7 +101,7 @@ for (const surface of ['terminal', 'desktop'] as const) {
     await ui.press({ key: 'folder--work-demo' })
     await ui.press({ key: 'type-feedback' })
     await ui.press({ key: 'mem-feedback_style' })
-    expect(await ui.find({ key: 'close' })).toBeDefined()
+    expect((await ui.find({ key: 'close' }))?.props.role).toBe('dismiss')
     expect(await ui.find({ text: 'Writing style' })).toBeDefined()
 
     const style = `${APP}/feedback_style.md`
@@ -150,6 +154,44 @@ test('a heavy session gets one toast, and the pane says it up top', async ($, on
   await $.command.run({ command: 'view-memory', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 80 } })
   const ui = await $.ui.mount({ plugin: 'view-memory', surface: 'desktop', component: 'Pane', props: PANE_PROPS, requestId: 'view-memory' })
   expect(await ui.find({ text: /re-reads 182k tokens/ })).toBeDefined()
+})
+
+test('with no pane shown, the command answers in text with each overdue item', async ($, on) => {
+  fakeHome(on, { isPlaced: false })
+  const reply = await $.command.run({ command: 'view-memory', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 80 } })
+  expect(reply.text).toContain('1 overdue')
+  expect(reply.text).toContain('- Launch (/work/demo), due Jan 15, 2020')
+  expect(reply.text).not.toContain('Memory pane')
+})
+
+for (const [version, title] of [
+  ['2.1.295', { bold: true }],
+  ['2.1.301', { size: 'title', weight: 'semibold' }],
+] as const) {
+  test(`engine ${version} draws the pane's title with the props it knows`, async ($, on) => {
+    fakeHome(on, { version })
+    await $.command.run({ command: 'view-memory', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 80 } })
+    const ui = await $.ui.mount({ plugin: 'view-memory', surface: 'desktop', component: 'Pane', props: PANE_PROPS, requestId: 'view-memory' })
+    const heading = await ui.find({ type: 'Text', text: /^Memory$/ })
+    expect(heading?.props).toMatchObject(title)
+    expect(heading?.props.size === undefined).toBe(version === '2.1.295')
+  })
+}
+
+test('a narrow pane cuts a long path to fit, keeping its file name, and leaves short names whole', async ($, on) => {
+  fakeHome(on)
+  await $.command.run({ command: 'view-memory', args: '', origin: { kind: 'composer' }, presentation: { isFullscreen: false, columns: 40 } })
+  const ui = await $.ui.mount({
+    plugin: 'view-memory',
+    surface: 'terminal',
+    component: 'Pane',
+    props: { ...PANE_PROPS, bodyColumns: 30 },
+    requestId: 'view-memory',
+  })
+  expect((await ui.find({ key: 'folder--home-me--bot-ws' }))?.text).toBe('~/.bot/ws ›')
+  const path = (await ui.find({ key: 'load-0' }))?.text ?? ''
+  expect(path).toMatch(/^….*CLAUDE\.md ›$/)
+  expect(path.length).toBe(12 + ' ›'.length)
 })
 
 test('mobile draws the browser without the search field it has no element for', async ($, on) => {
