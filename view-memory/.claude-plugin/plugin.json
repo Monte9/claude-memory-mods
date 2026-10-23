@@ -1,6 +1,6 @@
 {
   "name": "view-memory",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "/view-memory: a pane browsing every auto-memory folder, with search, overdue items, health checks and what each session loads, and a nudge to save once a session runs long",
   "author": {
     "name": "Monte Thakkar",

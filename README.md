@@ -64,7 +64,7 @@ claude plugin marketplace add ./claude-memory-mods
 
 Before committing a change: `claude plugin validate <mod>` and `claude plugin test <mod>`.
 
-The tests check a mod's logic, not how the desktop app paints it, so click through a pane there by hand. On the desktop app a pane `Button` needs two clicks unless it already holds the focus ([anthropics/claude-code#99395](https://github.com/anthropics/claude-code/issues/99395)): open panes with `focus: true`, and after a press that swaps the view, move the focus with `$.ui.focus` onto the next likely `Button`, as `view-memory` does.
+The tests check a mod's logic, not how the desktop app paints it, so click through a pane there by hand. Desktop versions before 3.6556.1 needed two clicks on a pane `Button` that didn't hold the focus ([anthropics/claude-code#99395](https://github.com/anthropics/claude-code/issues/99395)).
 
 ## License
 

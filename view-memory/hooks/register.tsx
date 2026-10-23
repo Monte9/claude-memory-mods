@@ -193,7 +193,7 @@ export const register: Register = on => {
     if (!current) return { text: 'No auto-memory folders yet.' }
     await update($, view, () => TOP)
     const today = new Date().toISOString().slice(0, 10)
-    const shown = await $.ui.open({ id: PANE, title: 'Memory', focus: true })
+    const shown = await $.ui.open({ id: PANE, title: 'Memory' })
     if (!shown.isPlaced) return { text: libraryText(current, today) }
     return { text: `${librarySummary(current, today)} Details in the Memory pane.` }
   })
@@ -206,11 +206,7 @@ export const register: Register = on => {
     if (lib === null) return <Text dimColor>Run /view-memory to load your memory.</Text>
 
     const at = await read($, view)
-    const go = async (next: View, focusKey: string) => {
-      await update($, view, () => next)
-      // The pressed Button leaves the drawing, so without this the pane loses the keyboard and the next click only takes it back.
-      await $.ui.focus({ requestId: PANE, key: focusKey }).catch(() => undefined)
-    }
+    const go = (next: View) => update($, view, () => next)
     const today = new Date().toISOString().slice(0, 10)
     const nameOf = (id: string | undefined) => lib.folders.find(folder => folder.id === id)?.project ?? id ?? ''
     const load = (await read($, measured)) ?? lib.estimatedLoad
@@ -224,7 +220,7 @@ export const register: Register = on => {
     if (at.file !== null) {
       const doc = await read($, opened)
       const text = doc?.path === at.file ? doc.text : ''
-      const back = () => go({ ...TOP, query: at.query }, `load-${load.findIndex(file => file.path === at.file)}`)
+      const back = () => go({ ...TOP, query: at.query })
       return (
         <Box flexDirection="column" rowGap={1}>
           <Box justifyContent="space-between" alignItems="center">
@@ -264,20 +260,17 @@ export const register: Register = on => {
       const body = memory.linkTo
         ? (lib.folders.find(other => other.id === memory.linkTo)?.memories.find(other => other.name === memory.name)?.body ?? '')
         : memory.body
-      const backTop = at.query ? `hit-${folder.id}-${memory.name}` : `due-${overdue.findIndex(item => item.folder === folder.id && item.name === memory.name)}`
       const close = () =>
-        at.fromTop
-          ? go({ ...TOP, query: at.query }, backTop)
-          : go({ ...TOP, folder: folder.id, section: section.type, query: at.query }, `mem-${memory.name}`)
+        at.fromTop ? go({ ...TOP, query: at.query }) : go({ ...TOP, folder: folder.id, section: section.type, query: at.query })
       return (
         <Box flexDirection="column" rowGap={1}>
           <Box justifyContent="space-between" alignItems="center">
             <Box columnGap={1}>
-              <Button key="crumb-top" plain dimColor onPress={() => go({ ...TOP, query: at.query }, 'search')}>
+              <Button key="crumb-top" plain dimColor onPress={() => go({ ...TOP, query: at.query })}>
                 Memory
               </Button>
               <Text dimColor>›</Text>
-              <Button key="crumb-folder" plain dimColor onPress={() => go({ ...TOP, folder: folder.id }, `type-${section.type}`)}>
+              <Button key="crumb-folder" plain dimColor onPress={() => go({ ...TOP, folder: folder.id })}>
                 {clip(folder.project, room - 44, 'end')}
               </Button>
               <Text dimColor>›</Text>
@@ -285,7 +278,7 @@ export const register: Register = on => {
                 key="crumb-section"
                 plain
                 dimColor
-                onPress={() => go({ ...TOP, folder: folder.id, section: section.type }, `mem-${memory.name}`)}
+                onPress={() => go({ ...TOP, folder: folder.id, section: section.type })}
               >
                 {section.label}
               </Button>
@@ -318,7 +311,7 @@ export const register: Register = on => {
       return (
         <Box flexDirection="column" rowGap={1}>
           <Box justifyContent="space-between" alignItems="center">
-            <Button key="back-folder" plain dimColor onPress={() => go({ ...TOP, folder: folder.id }, `type-${section.type}`)}>
+            <Button key="back-folder" plain dimColor onPress={() => go({ ...TOP, folder: folder.id })}>
               {`‹ ${clip(folder.project, room - 16, 'end')}`}
             </Button>
             <Button key="refresh" label="Refresh" onPress={() => refresh($)} />
@@ -339,7 +332,7 @@ export const register: Register = on => {
                   key={`mem-${m.name}`}
                   {...link}
                   label={`${clip(m.title, room - 22)} ›`}
-                  onPress={() => go({ ...TOP, folder: folder.id, section: section.type, memory: m.name, query: at.query }, 'close')}
+                  onPress={() => go({ ...TOP, folder: folder.id, section: section.type, memory: m.name, query: at.query })}
                 />
                 <Text dimColor {...scale.meta}>
                   {formatDay(m.modified, today)}
@@ -366,7 +359,7 @@ export const register: Register = on => {
       return (
         <Box flexDirection="column" rowGap={1}>
           <Box justifyContent="space-between" alignItems="center">
-            <Button key="back-top" plain dimColor onPress={() => go({ ...TOP, query: at.query }, `folder-${folder.id}`)}>
+            <Button key="back-top" plain dimColor onPress={() => go({ ...TOP, query: at.query })}>
               ‹ All memory
             </Button>
             <Button key="refresh" label="Refresh" onPress={() => refresh($)} />
@@ -402,12 +395,7 @@ export const register: Register = on => {
                   key={`type-${s.type}`}
                   {...link}
                   label={`${s.label} ›`}
-                  onPress={() =>
-                    go(
-                      { ...TOP, folder: folder.id, section: s.type, query: at.query },
-                      s.memories[0] ? `mem-${s.memories[0].name}` : 'back-folder',
-                    )
-                  }
+                  onPress={() => go({ ...TOP, folder: folder.id, section: s.type, query: at.query })}
                 />
                 <Text dimColor {...scale.count}>
                   {plural(s.memories.length, 'memory', 'memories')}
@@ -434,12 +422,12 @@ export const register: Register = on => {
     const total = lib.folders.reduce((sum, each) => sum + each.memories.filter(m => !m.linkTo).length, 0)
     const isMeasured = load !== lib.estimatedLoad
     const loadChars = load.reduce((sum, file) => sum + file.chars, 0)
-    const openFromTop = (folderId: string, name: string, focusKey = 'close') =>
-      go({ ...TOP, folder: folderId, memory: name, query: at.query, fromTop: true }, focusKey)
+    const openFromTop = (folderId: string, name: string) =>
+      go({ ...TOP, folder: folderId, memory: name, query: at.query, fromTop: true })
     const openFile = async (file: LoadedFile) => {
       const text = await $.fs.read(file.path).catch(() => '')
       await update($, opened, () => ({ path: file.path, kind: file.kind, text }))
-      await go({ ...TOP, file: file.path, query: at.query }, 'close')
+      await go({ ...TOP, file: file.path, query: at.query })
     }
 
     return (
@@ -465,7 +453,7 @@ export const register: Register = on => {
               placeholder="Search all memory"
               value={at.query}
               submitLabel="search"
-              onSubmit={value => go({ ...TOP, query: value.trim() }, 'search')}
+              onSubmit={value => go({ ...TOP, query: value.trim() })}
             />
           </Box>
         )}
@@ -476,7 +464,7 @@ export const register: Register = on => {
               <Text {...scale.heading}>
                 {plural(hits.length, 'match', 'matches')} for “{clip(at.query, 40)}”
               </Text>
-              <Button key="clear-search" plain dimColor label="Clear" onPress={() => go(TOP, 'search')} />
+              <Button key="clear-search" plain dimColor label="Clear" onPress={() => go(TOP)} />
             </Box>
             {hits.length === 0 && <Text dimColor>Nothing matches. Try a shorter word.</Text>}
             {hits.map(hit => (
@@ -546,7 +534,7 @@ export const register: Register = on => {
                       key={`folder-${f.id}`}
                       {...link}
                       label={`${clip(f.project, room - 22, 'end')} ›`}
-                      onPress={() => go({ ...TOP, folder: f.id, query: at.query }, `type-${sectionsOf(f)[0]?.type ?? 'user'}`)}
+                      onPress={() => go({ ...TOP, folder: f.id, query: at.query })}
                     />
                     <Text dimColor {...scale.count}>
                       {plural(f.memories.length, 'memory', 'memories')}
